@@ -1,5 +1,104 @@
 # 🚀 Workflow Manager PWA (Mini Jira)
 
+**frontend :**
+```bash
+frontend/src/
+├── assets/
+├── components/
+│   ├── ui/
+│   ├── layout/
+│   └── common/
+├── features/
+│   ├── auth/
+│   ├── projects/
+│   ├── tasks/
+│   ├── board/
+│   ├── comments/
+│   ├── notifications/
+│   └── offline/
+├── hooks/
+├── lib/
+├── services/
+├── store/
+├── routes/
+├── pages/
+├── utils/
+├── styles/
+├── app/
+├── main.tsx
+└── vite-env.d.ts
+What each part is for
+components/ui/ → reusable buttons, inputs, modals, cards
+components/layout/ → navbar, sidebar, app shell
+features/ → business modules, each with its own logic
+services/ → API calls
+store/ → global state management
+routes/ → route definitions and protected routes
+app/ → app bootstrap, providers, config
+offline/ → offline cache, sync helpers, service worker helpers
+```
+**backend :**
+```bash
+backend/src/
+├── config/
+├── controllers/
+├── routes/
+├── services/
+├── repositories/
+├── models/
+├── middleware/
+├── validators/
+├── sockets/
+├── jobs/
+├── utils/
+├── constants/
+├── app.ts
+└── server.ts
+What each part is for
+routes/ → API endpoints
+controllers/ → request/response handling only
+services/ → business logic
+repositories/ → database queries
+models/ → schema/entities if needed
+middleware/ → auth, error handling, validation, rate limiting
+sockets/ → Socket.io events
+jobs/ → background tasks like notifications or cleanup
+validators/ → request validation schemas
+config/ → DB connection, env config, socket config
+```
+**Shared folder:**
+``` bash
+shared/
+├── types/
+├── constants/
+├── schemas/
+└── utils/
+
+Use it for:
+
+shared TypeScript types
+status enums
+validation schemas
+constants like task status names
+```
+
+**PWA structure**
+``` bash
+frontend/src/features/offline/
+├── cache.ts
+├── sync.ts
+├── network-status.ts
+└── offline-banner.tsx
+```
+
+**Public**
+``` bash
+frontend/public/
+├── manifest.webmanifest
+├── icons/
+└── sw.js
+```
+
 A **Progressive Web App (PWA)** for managing projects, tasks, and team collaboration — built with a modern full-stack architecture.
 
 ---
