@@ -1,5 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
-import type { Task } from "../types";
+import type{ Task } from "../../../store/taskStore";
 
 export default function TaskCard({ task }: { task: Task }) {
   const { attributes, listeners, setNodeRef, transform } =
@@ -21,7 +21,7 @@ export default function TaskCard({ task }: { task: Task }) {
       style={style}
       className="bg-white p-3 rounded shadow mb-2 cursor-grab"
     >
-      {task.title}
+      <p className="font-medium">{task.title}</p>
     </div>
   );
 }

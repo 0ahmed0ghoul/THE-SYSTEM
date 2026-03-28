@@ -1,23 +1,12 @@
 import { createBrowserRouter } from "react-router-dom";
 import LoginPage from "../features/auth/LoginPage";
 import Dashboard from "../pages/Dashboard";
-import ProtectedRoute from "./ProtectedRoute";
 import RegisterPage from "../features/auth/RegisterPage";
-import DashboardLayout from "../components/layout/DashboardLayout";
 import ProjectsPage from "../features/projects/ProjectPage";
 import BoardPage from "../features/board/BoardPage";
+import { ProtectedLayout } from "./ProtectedLayout";
 
 export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: (
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Dashboard />
-        </DashboardLayout>
-      </ProtectedRoute>
-    ),
-  },
   {
     path: "/login",
     element: <LoginPage />,
@@ -27,23 +16,15 @@ export const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
+    path: "/",
+    element: <ProtectedLayout><Dashboard /></ProtectedLayout>,
+  },
+  {
     path: "/projects",
-    element: (
-      <ProtectedRoute>
-        <DashboardLayout>
-          <ProjectsPage />
-        </DashboardLayout>
-      </ProtectedRoute>
-    ),
+    element: <ProtectedLayout><ProjectsPage /></ProtectedLayout>,
   },
   {
     path: "/board",
-    element: (
-      <ProtectedRoute>
-        <DashboardLayout>
-          <BoardPage />
-        </DashboardLayout>
-      </ProtectedRoute>
-    ),
+    element: <ProtectedLayout><BoardPage projectId={1} /></ProtectedLayout>,
   },
 ]);
