@@ -260,7 +260,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[500px]">
+      <div className="min-h-125">
         {activeTab === "overview" && (
           <div className="space-y-6">
             {/* Project Description */}

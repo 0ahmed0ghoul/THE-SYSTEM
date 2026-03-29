@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useNavigate, useLocation, NavLink } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
-  ClipboardList,
   Calendar,
   Users,
   Settings,
@@ -25,7 +24,6 @@ type SidebarProps = {
 
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const logout = useAuthStore((state) => state.logout);
   const [isProjectsOpen, setIsProjectsOpen] = useState(true);
 
@@ -49,9 +47,6 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     navigate("/login");
   };
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
 
   return (
     <>

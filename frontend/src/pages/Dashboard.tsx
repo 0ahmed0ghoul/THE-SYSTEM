@@ -9,21 +9,20 @@ import {
   Users,
   ArrowUpRight,
   MoreHorizontal,
-  AlertCircle,
   X,
 } from "lucide-react";
 
 export default function Dashboard() {
   const [stats] = useState(statsData);
   const [recentProjects, setRecentProjects] = useState(projectsData);
-  const [upcomingTasks, setUpcomingTasks] = useState(tasksData);
+  const [upcomingTasks] = useState(tasksData);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [newTask, setNewTask] = useState({
-    title: "",
-    project: "",
-    priority: "low",
-    dueDate: "",
-  });
+  // const [newTask, setNewTask] = useState({
+  //   title: "",
+  //   project: "",
+  //   priority: "low",
+  //   dueDate: "",
+  // });
   const [newProject, setNewProject] = useState({
     name: "",
     status: "active",
@@ -31,27 +30,27 @@ export default function Dashboard() {
     progress: 0,
   });
 
-  const handleAddTask = () => {
-    if (!newTask.title || !newTask.project || !newTask.dueDate) return;
+  // const handleAddTask = () => {
+  //   if (!newTask.title || !newTask.project || !newTask.dueDate) return;
 
-    const task = {
-      id: Date.now(),
-      title: newTask.title,
-      project: newTask.project,
-      priority: newTask.priority,
-      dueDate: newTask.dueDate,
-    };
+  //   const task = {
+  //     id: Date.now(),
+  //     title: newTask.title,
+  //     project: newTask.project,
+  //     priority: newTask.priority,
+  //     dueDate: newTask.dueDate,
+  //   };
 
-    setUpcomingTasks((prev) => [task, ...prev]);
+  //   setUpcomingTasks((prev) => [task, ...prev]);
 
-    // reset form
-    setNewTask({
-      title: "",
-      project: "",
-      priority: "low",
-      dueDate: "",
-    });
-  };
+  //   // reset form
+  //   setNewTask({
+  //     title: "",
+  //     project: "",
+  //     priority: "low",
+  //     dueDate: "",
+  //   });
+  // };
 
   const handleAddProject = () => {
     if (!newProject.name || !newProject.deadline) return;

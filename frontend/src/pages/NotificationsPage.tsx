@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, CheckCircle2, MessageSquare, Calendar, X } from "lucide-react";
+import { Bell, CheckCircle2, MessageSquare, Calendar} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Notification {

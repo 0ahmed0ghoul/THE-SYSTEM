@@ -6,20 +6,14 @@ import {
   MapPin,
   MoreHorizontal,
   Search,
-  Filter,
-  Plus,
   UserPlus,
   Award,
   Calendar,
   MessageCircle,
   Star,
-  Clock,
   CheckCircle2,
   X,
-  Edit2,
-  Trash2,
   UserCheck,
-  UserX,
   Send,
 } from "lucide-react";
 
@@ -49,7 +43,7 @@ export default function TeamPage() {
   const departments = ["all", "Engineering", "Design", "Product", "Marketing", "Sales"];
   const statuses = ["all", "active", "away", "busy", "offline"];
 
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+  const [teamMembers] = useState<TeamMember[]>([
     {
       id: 1,
       name: "Alex Morgan",
@@ -295,7 +289,7 @@ export default function TeamPage() {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm`}>
+                    <div className={`w-14 h-14 rounded-xl bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm`}>
                       {member.avatar}
                     </div>
                     <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${getStatusColor(member.status)}`} />
@@ -512,7 +506,7 @@ function MemberDetailsModal({ member, onClose }: { member: TeamMember; onClose: 
         <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-6 shadow-xl">
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-sm">
+              <div className="w-16 h-16 rounded-xl bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-sm">
                 {member.avatar}
               </div>
               <div>

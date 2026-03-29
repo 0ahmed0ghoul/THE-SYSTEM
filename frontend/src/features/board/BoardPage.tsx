@@ -1,80 +1,156 @@
-import { DndContext, closestCenter, DragOverlay, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
-import { useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { useState, useMemo, useCallback } from "react";
 import { Plus } from "lucide-react";
 
 import { useTaskStore } from "../../store/taskStore";
-import type { TaskStatus, Task } from "../../store/taskStore";
+import type { Task, TaskStatus } from "../../store/taskStore";
+
 import Column from "./components/Column";
 import TaskCard from "./components/TaskCard";
 import TaskModal from "./components/TaskModal";
 
+type FilterType = "all" | "assigned" | "due";
+
+type ColumnType = {
+  id: TaskStatus;
+  title: string;
+  icon: string;
+};
+
+const COLUMNS: ColumnType[] = [
+  { id: "todo", title: "To Do", icon: "📋" },
+  { id: "inprogress", title: "In Progress", icon: "🔄" },
+  { id: "done", title: "Done", icon: "✅" },
+];
+
 export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
-  const { getProjectTasks, updateTaskStatus, tasks, addTask } = useTaskStore();
+  const { getProjectTasks, updateTaskStatus, addTask } = useTaskStore();
+
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
-  const [filterBy, setFilterBy] = useState<'all' | 'assigned' | 'due'>('all');
-  const [selectedStatus, setSelectedStatus] = useState<TaskStatus>('todo');
+  const [filterBy, setFilterBy] = useState<FilterType>("all");
+  const [selectedStatus, setSelectedStatus] = useState<TaskStatus>("todo");
 
-  const projectTasks = getProjectTasks(projectId);
+  // ✅ Memoized tasks (performance boost)
+  const projectTasks = useMemo(
+    () => getProjectTasks(projectId),
+    [getProjectTasks, projectId]
+  );
 
-  const getTasksByStatus = (status: TaskStatus) =>
-    projectTasks.filter((t) => t.status === status);
+  // ✅ Filter logic (ready for future expansion)
+  const filteredTasks = useMemo(() => {
+    if (filterBy === "all") return projectTasks;
 
-  // Sensors for drag and drop
+    if (filterBy === "assigned") {
+      return projectTasks.filter((t) => t.assignedTo); // adapt if needed
+    }
+
+    if (filterBy === "due") {
+      const today = new Date().toDateString();
+      return projectTasks.filter(
+        (t) => t.dueDate && new Date(t.dueDate).toDateString() === today
+      );
+    }
+
+    return projectTasks;
+  }, [projectTasks, filterBy]);
+
+  // ✅ Group tasks by status (O(n) instead of multiple filters)
+  const tasksByStatus = useMemo(() => {
+    const map: Record<TaskStatus, Task[]> = {
+      todo: [],
+      inprogress: [],
+      done: [],
+    };
+
+    filteredTasks.forEach((task) => {
+      map[task.status].push(task);
+    });
+
+    return map;
+  }, [filteredTasks]);
+
+  // Sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor)
   );
 
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    setActiveTask(null);
-    if (!over) return;
+  // ✅ Drag start
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const task = projectTasks.find((t) => t.id === event.active.id);
+      setActiveTask(task || null);
+    },
+    [projectTasks]
+  );
 
-    const taskId = active.id as number;
-    const newStatus = over.id as TaskStatus;
-    const currentTask = projectTasks.find(t => t.id === taskId);
+  // ✅ Drag end (optimized + safe)
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveTask(null);
 
-    if (currentTask && currentTask.status !== newStatus) {
+      if (!over) return;
+
+      const taskId = active.id as number;
+      const newStatus = over.id as TaskStatus;
+
+      const task = projectTasks.find((t) => t.id === taskId);
+
+      if (!task || task.status === newStatus) return;
+
       updateTaskStatus(taskId, newStatus);
-    }
-  };
+    },
+    [projectTasks, updateTaskStatus]
+  );
 
-  const handleDragStart = (event: any) => {
-    const task = projectTasks.find(t => t.id === event.active.id);
-    setActiveTask(task || null);
-  };
-
-  const handleAddTask = (status: TaskStatus) => {
+  // Add task
+  const handleAddTask = useCallback((status: TaskStatus) => {
     setSelectedStatus(status);
     setIsAddingTask(true);
-  };
+  }, []);
 
-  const handleSaveTask = (taskData: Partial<Task>) => {
-    addTask(projectId, taskData.title || "", taskData.description, taskData.priority);
-    setIsAddingTask(false);
-  };
+  const handleSaveTask = useCallback(
+    (taskData: Partial<Task>) => {
+      addTask(
+        projectId,
+        taskData.title || "",
+        taskData.description,
+        taskData.priority
+      );
+      setIsAddingTask(false);
+    },
+    [addTask, projectId]
+  );
 
-  type ColumnType = {
-    id: string;
-    title: string;
-    status: TaskStatus;
-    icon: string;
-  };
-  
-  const columns = [
-    { id: "todo", title: "To Do", status: "todo" as TaskStatus, icon: "📋" },
-    { id: "inprogress", title: "In Progress", status: "inprogress" as TaskStatus, icon: "🔄" },
-    { id: "done", title: "Done", status: "done" as TaskStatus, icon: "✅" },
-  ];
+  // ✅ Stats optimized
+  const getColumnStats = useCallback(
+    (status: TaskStatus) => {
+      const tasks = tasksByStatus[status];
 
-  const getColumnStats = (status: TaskStatus) => {
-    const tasks = getTasksByStatus(status);
-    const total = tasks.length;
-    const highPriority = tasks.filter(t => t.priority === 'high').length;
-    const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date()).length;
-    return { total, highPriority, overdue };
-  };
+      const now = Date.now();
+
+      return {
+        total: tasks.length,
+        highPriority: tasks.filter((t) => t.priority === "high").length,
+        overdue: tasks.filter(
+          (t) => t.dueDate && new Date(t.dueDate).getTime() < now
+        ).length,
+      };
+    },
+    [tasksByStatus]
+  );
 
   return (
     <div className="h-full flex flex-col p-4">
@@ -82,42 +158,37 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Project Board</h2>
-          <p className="text-gray-500 mt-1">Drag and drop tasks to update their status</p>
+          <p className="text-gray-500 mt-1">
+            Drag and drop tasks to update their status
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Filter Buttons */}
-          <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1">
-            <button
-              onClick={() => setFilterBy('all')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
-                filterBy === 'all' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              All Tasks
-            </button>
-            <button
-              onClick={() => setFilterBy('assigned')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
-                filterBy === 'assigned' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Assigned
-            </button>
-            <button
-              onClick={() => setFilterBy('due')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
-                filterBy === 'due' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Due Today
-            </button>
+          {/* Filters */}
+          <div className="flex bg-white rounded-lg border border-gray-200 p-1">
+            {(["all", "assigned", "due"] as FilterType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => setFilterBy(type)}
+                className={`px-3 py-1.5 text-sm rounded-md transition ${
+                  filterBy === type
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {type === "all"
+                  ? "All Tasks"
+                  : type === "assigned"
+                  ? "Assigned"
+                  : "Due Today"}
+              </button>
+            ))}
           </div>
 
-          {/* Add Task Button */}
+          {/* Add Task */}
           <button
-            onClick={() => handleAddTask('todo')}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
+            onClick={() => handleAddTask("todo")}
+            className="flex items-center gap-2 px-4 py-2 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition font-medium"
           >
             <Plus size={18} />
             <span className="hidden sm:inline">Add Task</span>
@@ -125,42 +196,48 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
         </div>
       </div>
 
-      {/* Column Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        {columns.map((column: { id: string; title: string; status: TaskStatus; icon: string }) => {
-          const stats = getColumnStats(column.status);
+        {COLUMNS.map((col) => {
+          const stats = getColumnStats(col.id);
+
           return (
-            <div key={column.id} className="bg-white rounded-xl p-3 border border-gray-200">
-              <div className="flex items-center justify-between">
+            <div key={col.id} className="bg-white rounded-xl p-3 border">
+              <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{column.icon}</span>
-                  <span className="font-semibold text-gray-900">{column.title}</span>
+                  <span>{col.icon}</span>
+                  <span className="font-semibold">{col.title}</span>
                 </div>
-                <span className="text-2xl font-bold text-gray-700">{stats.total}</span>
+                <span className="text-xl font-bold">{stats.total}</span>
               </div>
+
               <div className="flex gap-3 mt-2 text-xs">
-                {stats.highPriority > 0 && <span className="text-red-600">🔥 {stats.highPriority} high priority</span>}
-                {stats.overdue > 0 && <span className="text-orange-600">⚠️ {stats.overdue} overdue</span>}
+                {stats.highPriority > 0 && (
+                  <span className="text-red-600">🔥 {stats.highPriority}</span>
+                )}
+                {stats.overdue > 0 && (
+                  <span className="text-orange-600">⚠️ {stats.overdue}</span>
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Kanban Board */}
+      {/* Board */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-nowrap items-start gap-6 overflow-x-auto pb-4 min-h-[600px] w-full">
-          {columns.map((column: ColumnType) => (
+        <div className="flex gap-6 overflow-x-auto pb-4 min-h-150">
+          {COLUMNS.map((col) => (
             <Column
-              key={column.id}
-              title={column.title}
-              status={column.status}
-              tasks={getTasksByStatus(column.status)}
+              key={col.id}
+              title={col.title}
+              status={col.id}
+              tasks={tasksByStatus[col.id]}
               filterBy={filterBy}
               onAddTask={handleAddTask}
             />
@@ -172,12 +249,12 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
         </DragOverlay>
       </DndContext>
 
-      {/* Task Modal */}
+      {/* Modal */}
       <TaskModal
         isOpen={isAddingTask}
         onClose={() => setIsAddingTask(false)}
-        onSave={handleSaveTask}
-        status={selectedStatus}
+        onSave={handleSaveTask} // your handleSaveTask has signature (task: Partial<Task>) => void
+        status={selectedStatus} // selectedStatus is TaskStatus
       />
     </div>
   );

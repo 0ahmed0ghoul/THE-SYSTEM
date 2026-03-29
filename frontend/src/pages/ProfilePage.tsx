@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { useAuthStore } from "../store/authStore";
 import {
-  User,
   Mail,
   Phone,
   MapPin,
@@ -16,7 +15,6 @@ import {
   Moon,
   Globe,
   Shield,
-  ChevronRight,
   LogOut,
   CheckCircle,
   AlertCircle,
@@ -129,7 +127,7 @@ export default function ProfilePage() {
       {/* Profile Header */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Cover Photo */}
-        <div className="h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 relative">
+        <div className="h-32 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 relative">
           <button className="absolute bottom-4 right-4 p-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-colors">
             <Camera size={18} />
           </button>
@@ -139,7 +137,7 @@ export default function ProfilePage() {
         <div className="relative px-6 pb-6">
           <div className="flex flex-col md:flex-row gap-6 -mt-12 mb-6">
             <div className="relative">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white dark:border-slate-900">
+              <div className="w-24 h-24 rounded-2xl bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white dark:border-slate-900">
                 {avatar ? (
                   <img src={avatar} alt="Avatar" className="w-full h-full rounded-2xl object-cover" />
                 ) : (

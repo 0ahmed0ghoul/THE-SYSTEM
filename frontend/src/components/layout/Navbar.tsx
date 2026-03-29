@@ -88,8 +88,8 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
               )}
             </button>
 
-            <div className="w-1 h-6 bg-gradient-to-b from-indigo-600 to-indigo-600 dark:from-indigo-500 dark:to-indigo-500 rounded-full"></div>
-            <h2 className="text-lg font-semibold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
+            <div className="w-1 h-6 bg-linear-to-b from-indigo-600 to-indigo-600 dark:from-indigo-500 dark:to-indigo-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold bg-linear-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
               {pageTitle}
             </h2>
           </div>
@@ -286,7 +286,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
               className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="User menu"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium">
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium">
                 {user?.email ? user.email[0].toUpperCase() : "U"}
               </div>
               <div className="hidden md:block text-left">
