@@ -6,12 +6,14 @@ import { useTaskStore } from "../../store/taskStore";
 import type { TaskStatus, Task } from "../../store/taskStore";
 import Column from "./components/Column";
 import TaskCard from "./components/TaskCard";
+import TaskModal from "./components/TaskModal";
 
 export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
   const { getProjectTasks, updateTaskStatus, tasks, addTask } = useTaskStore();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [filterBy, setFilterBy] = useState<'all' | 'assigned' | 'due'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<TaskStatus>('todo');
 
   const projectTasks = getProjectTasks(projectId);
 
@@ -43,6 +45,16 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
     setActiveTask(task || null);
   };
 
+  const handleAddTask = (status: TaskStatus) => {
+    setSelectedStatus(status);
+    setIsAddingTask(true);
+  };
+
+  const handleSaveTask = (taskData: Partial<Task>) => {
+    addTask(projectId, taskData.title || "", taskData.description, taskData.priority);
+    setIsAddingTask(false);
+  };
+
   type ColumnType = {
     id: string;
     title: string;
@@ -67,7 +79,7 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
   return (
     <div className="h-full flex flex-col p-4">
       {/* Header */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-red-100">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Project Board</h2>
           <p className="text-gray-500 mt-1">Drag and drop tasks to update their status</p>
@@ -102,9 +114,9 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
             </button>
           </div>
 
-          {/* Add Task */}
+          {/* Add Task Button */}
           <button
-            onClick={() => setIsAddingTask(true)}
+            onClick={() => handleAddTask('todo')}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
           >
             <Plus size={18} />
@@ -150,6 +162,7 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
               status={column.status}
               tasks={getTasksByStatus(column.status)}
               filterBy={filterBy}
+              onAddTask={handleAddTask}
             />
           ))}
         </div>
@@ -159,98 +172,13 @@ export default function BoardPage({ projectId = 1 }: { projectId?: number }) {
         </DragOverlay>
       </DndContext>
 
-      {/* Add Task Modal */}
-      {isAddingTask && (
-        <AddTaskModal 
-          projectId={projectId} 
-          onClose={() => setIsAddingTask(false)} 
-          onAdd={(title: string, description?: string, priority?: "low" | "medium" | "high") => { 
-            addTask(projectId, title, description, priority); 
-            setIsAddingTask(false); 
-          }} 
-        />
-      )}
-    </div>
-  );
-}
-
-// Add Task Modal
-interface AddTaskModalProps {
-  projectId: number;
-  onClose: () => void;
-  onAdd: (title: string, description?: string, priority?: "low" | "medium" | "high") => void;
-}
-
-function AddTaskModal({ projectId, onClose, onAdd }: AddTaskModalProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    
-    onAdd(title.trim(), description.trim() || undefined, priority);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
-        <h3 className="text-xl font-bold mb-4">Create New Task</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-              placeholder="Enter task title"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter task description (optional)"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select
-              value={priority}
-              onChange={e => setPriority(e.target.value as 'low' | 'medium' | 'high')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button 
-              type="submit" 
-              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
-            >
-              Create Task
-            </button>
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="flex-1 border border-gray-300 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={isAddingTask}
+        onClose={() => setIsAddingTask(false)}
+        onSave={handleSaveTask}
+        status={selectedStatus}
+      />
     </div>
   );
 }

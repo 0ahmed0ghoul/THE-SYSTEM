@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, type JSXElementConstructor, type Key, type ReactElement, type ReactNode, type ReactPortal } from "react";
 import { useAuthStore } from "../../store/authStore";
+import { useLocation, useNavigate, NavLink } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import {
   Bell,
@@ -11,10 +12,8 @@ import {
   HelpCircle,
   Moon,
   Sun,
-  MessageSquare,
-  Calendar,
-  CheckCircle2,
 } from "lucide-react";
+import { notificationsData, quickStats, getPageTitle} from "./navbarData";
 
 type NavbarProps = {
   onMenuClick: () => void;
@@ -22,42 +21,29 @@ type NavbarProps = {
 };
 
 export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
-  const user = useAuthStore((s) => s.user);
+  const { user } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [notifications, setNotifications] = useState(notificationsData);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Task completed",
-      message: "API Integration task completed",
-      time: "5 min ago",
-      read: false,
-      icon: CheckCircle2,
-      color: "text-green-500 dark:text-green-400",
-    },
-    {
-      id: 2,
-      title: "New comment",
-      message: "Ahmed commented on your task",
-      time: "1 hour ago",
-      read: false,
-      icon: MessageSquare,
-      color: "text-blue-500 dark:text-blue-400",
-    },
-    {
-      id: 3,
-      title: "Meeting reminder",
-      message: "Team sync in 30 minutes",
-      time: "2 hours ago",
-      read: true,
-      icon: Calendar,
-      color: "text-purple-500 dark:text-purple-400",
-    },
-  ];
+  useEffect(() => {
+    setIsNotificationsOpen(false);
+    setIsProfileOpen(false);
+  }, [location.pathname]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markAllAsRead = () => {
+    setNotifications((prev: any[]) =>
+      prev.map((notification: any) => ({ ...notification, read: true }))
+    );
+  };
+
+  const pageTitle = getPageTitle(location.pathname);
 
   return (
     <nav className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
@@ -69,6 +55,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
             <button
               onClick={onMenuClick}
               className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="Toggle sidebar"
             >
               {isSidebarOpen ? (
                 <svg
@@ -103,7 +90,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
 
             <div className="w-1 h-6 bg-gradient-to-b from-indigo-600 to-indigo-600 dark:from-indigo-500 dark:to-indigo-500 rounded-full"></div>
             <h2 className="text-lg font-semibold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
-              Dashboard
+              {pageTitle}
             </h2>
           </div>
 
@@ -118,6 +105,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
                 type="text"
                 placeholder="Search tasks, projects, or team..."
                 className="w-80 pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800 transition-all duration-200 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                aria-label="Search"
               />
               <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                 ⌘K
@@ -131,15 +119,39 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
           {/* Quick Stats */}
           <div className="hidden lg:flex items-center gap-3 mr-2">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
-              <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+              <svg
+                className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
               <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                12 tasks done
+                {quickStats.tasksDone} tasks done
               </span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-              <Calendar size={14} className="text-blue-600 dark:text-blue-400" />
+              <svg
+                className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
               <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                3 due today
+                {quickStats.tasksDueToday} due today
               </span>
             </div>
           </div>
@@ -148,6 +160,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative group"
+            aria-label="Toggle theme"
           >
             {isDarkMode ? (
               <Sun size={20} className="text-yellow-500" />
@@ -160,8 +173,14 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
           </button>
 
           {/* Help Button */}
-          <button className="hidden sm:block p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative group">
-            <HelpCircle size={20} className="text-slate-500 dark:text-slate-400" />
+          <button
+            className="hidden sm:block p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative group"
+            aria-label="Help"
+          >
+            <HelpCircle
+              size={20}
+              className="text-slate-500 dark:text-slate-400"
+            />
             <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs bg-slate-900 dark:bg-slate-700 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
               Help & support
             </span>
@@ -172,6 +191,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
             <button
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
+              aria-label="Notifications"
             >
               <Bell size={20} className="text-slate-500 dark:text-slate-400" />
               {unreadCount > 0 && (
@@ -191,47 +211,69 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100">
                       Notifications
                     </h3>
-                    <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                    >
                       Mark all as read
                     </button>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer ${
-                          !notification.read ? "bg-indigo-50/30 dark:bg-indigo-900/20" : ""
-                        }`}
-                      >
-                        <div className="flex gap-3">
-                          <div
-                            className={`p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 ${notification.color}`}
-                          >
-                            <notification.icon size={14} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {notification.title}
-                            </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                              {notification.message}
-                            </p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                              {notification.time}
-                            </p>
-                          </div>
-                          {!notification.read && (
-                            <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></div>
-                          )}
-                        </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Bell size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          No notifications
+                        </p>
                       </div>
-                    ))}
+                    ) : (
+                      notifications.map((notification: { icon: any; id: Key | null | undefined; read: any; color: any; title: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; message: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; time: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => {
+                        const IconComponent = notification.icon;
+                        return (
+                          <div
+                            key={notification.id}
+                            className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer ${
+                              !notification.read
+                                ? "bg-indigo-50/30 dark:bg-indigo-900/20"
+                                : ""
+                            }`}
+                          >
+                            <div className="flex gap-3">
+                              <div
+                                className={`p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 ${notification.color}`}
+                              >
+                                <IconComponent size={14} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                  {notification.title}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                                  {notification.time}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                  <div className="p-3 border-t border-slate-100 dark:border-slate-700 text-center">
-                    <button className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium">
-                      View all notifications
-                    </button>
-                  </div>
+                  {notifications.length > 0 && (
+                    <div className="p-3 border-t border-slate-100 dark:border-slate-700 text-center">
+                      <button
+                        onClick={() => navigate("/notifications")}
+                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors"
+                      >
+                        View all notifications
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -242,6 +284,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="User menu"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium">
                 {user?.email ? user.email[0].toUpperCase() : "U"}
@@ -250,7 +293,9 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                   {user?.email?.split("@")[0] || "User"}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Product Manager</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Product Manager
+                </p>
               </div>
               <ChevronDown
                 size={16}
@@ -275,16 +320,31 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
                     </p>
                   </div>
                   <div className="py-2">
-                    <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <NavLink
+                      to="/profile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
                       <User size={16} />
                       Profile Settings
-                    </button>
-                    <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    </NavLink>
+                    <NavLink
+                      to="/settings"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
                       <Settings size={16} />
                       Account Settings
-                    </button>
+                    </NavLink>
                     <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
-                    <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    <button
+                      onClick={() => {
+                        logout();
+                        navigate("/login");
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
                       <LogOut size={16} />
                       Sign Out
                     </button>
@@ -307,6 +367,7 @@ export default function Navbar({ onMenuClick, isSidebarOpen }: NavbarProps) {
             type="text"
             placeholder="Search tasks, projects..."
             className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-800 text-slate-900 dark:text-slate-100"
+            aria-label="Mobile search"
           />
         </div>
       </div>

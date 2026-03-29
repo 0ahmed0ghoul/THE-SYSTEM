@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useLocation, NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   Briefcase
 } from "lucide-react";
+import { useAuthStore } from "../../store/authStore";
 
 type SidebarProps = {
   isCollapsed: boolean;
@@ -22,7 +24,9 @@ type SidebarProps = {
 };
 
 export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
-  const [activeItem, setActiveItem] = useState("dashboard");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const logout = useAuthStore((state) => state.logout);
   const [isProjectsOpen, setIsProjectsOpen] = useState(true);
 
   const menuItems = [
@@ -34,11 +38,20 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   ];
 
   const projectItems = [
-    { id: "ecommerce", label: "E-commerce Platform", progress: 75, star: true },
-    { id: "mobile-app", label: "Mobile App Redesign", progress: 45, star: false },
-    { id: "api-integration", label: "API Integration", progress: 90, star: true },
-    { id: "documentation", label: "Documentation", progress: 30, star: false },
+    { id: "ecommerce", label: "E-commerce Platform", progress: 75, star: true, path: "/projects/1" },
+    { id: "mobile-app", label: "Mobile App Redesign", progress: 45, star: false, path: "/projects/2" },
+    { id: "api-integration", label: "API Integration", progress: 90, star: true, path: "/projects/3" },
+    { id: "documentation", label: "Documentation", progress: 30, star: false, path: "/projects/4" },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
 
   return (
     <>
@@ -59,7 +72,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       `}
       >
         {/* Logo Section */}
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+        <div 
+          onClick={() => navigate("/")}
+          className="p-6 border-b border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+        >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-slate-900 dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm">
               <span className="text-white dark:text-slate-200 font-bold text-sm tracking-wider">TS</span>
@@ -84,40 +100,45 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             </p>
             <div className="space-y-1">
               {menuItems.map((item) => (
-                <button
+                <NavLink
                   key={item.id}
-                  onClick={() => setActiveItem(item.id)}
-                  className={`
+                  to={item.path}
+                  onClick={() => onToggle()}
+                  className={({ isActive }) => `
                     w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group
                     ${
-                      activeItem === item.id
+                      isActive
                         ? "bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-100 shadow-sm"
                         : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                     }
                   `}
                 >
-                  <item.icon
-                    size={18}
-                    strokeWidth={activeItem === item.id ? 2.5 : 2}
-                    className={
-                      activeItem === item.id 
-                        ? "text-slate-100 dark:text-slate-200" 
-                        : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
-                    }
-                  />
-                  <span className={`text-sm ${activeItem === item.id ? "font-medium" : "font-medium"}`}>
-                    {item.label}
-                  </span>
-                  {item.id === "analytics" && (
-                    <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      activeItem === item.id 
-                        ? "bg-white/20 dark:bg-white/10 text-white" 
-                        : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800"
-                    }`}>
-                      NEW
-                    </span>
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        size={18}
+                        strokeWidth={isActive ? 2.5 : 2}
+                        className={
+                          isActive 
+                            ? "text-slate-100 dark:text-slate-200" 
+                            : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                        }
+                      />
+                      <span className={`text-sm ${isActive ? "font-medium" : "font-medium"}`}>
+                        {item.label}
+                      </span>
+                      {item.id === "analytics" && (
+                        <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isActive 
+                            ? "bg-white/20 dark:bg-white/10 text-white" 
+                            : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800"
+                        }`}>
+                          NEW
+                        </span>
+                      )}
+                    </>
                   )}
-                </button>
+                </NavLink>
               ))}
             </div>
           </div>
@@ -140,9 +161,14 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             {isProjectsOpen && (
               <div className="mt-2 space-y-0.5">
                 {projectItems.map((project) => (
-                  <button
+                  <NavLink
                     key={project.id}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                    to={project.path}
+                    onClick={() => onToggle()}
+                    className={({ isActive }) => `
+                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group
+                      ${isActive ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}
+                    `}
                   >
                     <Briefcase size={14} className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300 flex-1 truncate text-left">
@@ -154,13 +180,23 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                         className="text-amber-400 fill-amber-400"
                       />
                     )}
-                  </button>
+                  </NavLink>
                 ))}
 
-                <button className="w-full flex items-center gap-2 px-3 py-2.5 mt-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                <NavLink
+                  to="/projects"
+                  onClick={() => onToggle()}
+                  className={({ isActive }) => `
+                    w-full flex items-center gap-2 px-3 py-2.5 mt-2 rounded-lg transition-colors group
+                    ${isActive 
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200' 
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }
+                  `}
+                >
                   <FolderKanban size={16} className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
-                  <span className="text-sm font-medium">Browse All</span>
-                </button>
+                  <span className="text-sm font-medium">Browse All Projects</span>
+                </NavLink>
               </div>
             )}
           </div>
@@ -171,7 +207,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               Up Next
             </p>
             <div className="space-y-1">
-              <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm bg-white dark:bg-slate-900 transition-all cursor-pointer group">
+              <div 
+                onClick={() => navigate("/board")}
+                className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm bg-white dark:bg-slate-900 transition-all cursor-pointer group"
+              >
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors mt-0.5" />
                   <div>
@@ -184,7 +223,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm bg-white dark:bg-slate-900 transition-all cursor-pointer group">
+              <div 
+                onClick={() => navigate("/board")}
+                className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-sm bg-white dark:bg-slate-900 transition-all cursor-pointer group"
+              >
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors mt-0.5" />
                   <div>
@@ -202,7 +244,10 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
         {/* Footer User Section */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-          <button className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+          >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white dark:ring-slate-800">
                 AD

@@ -1,11 +1,12 @@
 import { Fragment, useState, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import type { Task, Status } from "../types";
+import type { Task} from "../types";
+import type { Status } from "../types";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (task: Partial<Task>) => void;
+  onSave: (task: Partial<Task>) => boolean | void; // return false to prevent close
   task?: Task; // undefined = new task
   status?: Status; // default status for new task
 }
@@ -14,16 +15,25 @@ export default function TaskModal({ isOpen, onClose, onSave, task, status }: Tas
   const [title, setTitle] = useState(task?.title || "");
   const [description, setDescription] = useState(task?.description || "");
   const [taskStatus, setTaskStatus] = useState<Status>(task?.status || status || "todo");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">(task?.priority || "medium");
 
   useEffect(() => {
-    setTitle(task?.title || "");
-    setDescription(task?.description || "");
-    setTaskStatus(task?.status || status || "todo");
-  }, [task, status]);
+    if (isOpen) {
+      setTitle(task?.title || "");
+      setDescription(task?.description || "");
+      setTaskStatus(task?.status || status || "todo");
+      setPriority(task?.priority || "medium");
+    }
+  }, [task, status, isOpen]);
 
   const handleSubmit = () => {
-    if (!title.trim()) return; // simple validation
-    onSave({ title, description, status: taskStatus });
+    if (!title.trim()) return;
+    onSave({ 
+      title: title.trim(), 
+      description: description.trim() || undefined, 
+      status: taskStatus,
+      priority: priority 
+    });
     onClose();
   };
 
@@ -77,8 +87,18 @@ export default function TaskModal({ isOpen, onClose, onSave, task, status }: Tas
                   onChange={(e) => setTaskStatus(e.target.value as Status)}
                 >
                   <option value="todo">Todo</option>
-                  <option value="in-progress">In Progress</option>
+                  <option value="inprogress">In Progress</option>
                   <option value="done">Done</option>
+                </select>
+
+                <select
+                  className="w-full border p-2 mb-3 rounded"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
                 </select>
 
                 <div className="mt-4 flex justify-end gap-2">
