@@ -7,14 +7,17 @@ import Dashboard from "../pages/Dashboard";
 import Analytics from "../pages/Analytics";
 import CalendarPage from "../pages/CalendarPage";
 import Settings from "../pages/Settings";
-import NotificationsPage from "../pages/NotificationsPage"; // Add this import
+import NotificationsPage from "../features/notifications/NotificationsPage"; // Add this import
 
 import ProjectsPage from "../features/projects/ProjectPage";
 import BoardPage from "../features/board/BoardPage";
 import { ProtectedLayout } from "./ProtectedLayout";
 import TeamPage from "../pages/TeamPage";
-import ProjectDetailPage from "../pages/ProjectDetailPage";
+import ProjectDetailPage from "../features/projects/ProjectDetailPage";
 import ProfilePage from "../pages/ProfilePage";
+import ProjectBoard from "../features/projects/ProjectBoard";
+import TaskDetailPage from "../features/tasks/TaskDetailPage";
+import TasksPage from "../features/tasks/TasksPage";
 
 export const router = createBrowserRouter([
   {
@@ -51,9 +54,21 @@ export const router = createBrowserRouter([
         element: <ProjectsPage />,
       },
       {
-        path: "/projects/:id",  // This handles /projects/1, /projects/2, etc.
+        path: "/projects/:id",  
         element: <ProjectDetailPage />,
       },
+      {
+        path: "/tasks",  
+        element: <TasksPage />,
+      },
+      {
+        path: "/tasks/:id", 
+        element: <TaskDetailPage />,
+      },
+      {
+        path: "/projects/:id/board", 
+        element: <ProjectBoard />,
+      },  
       {
         path: "/profile",  // This handles /projects/1, /projects/2, etc.
         element: <ProfilePage />,

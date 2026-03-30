@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { statsData, projectsData, tasksData } from "./data";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { tasksData } from "./data";
 import {
   FolderOpen,
   CheckCircle2,
@@ -9,69 +10,51 @@ import {
   Users,
   ArrowUpRight,
   MoreHorizontal,
-  X,
 } from "lucide-react";
+import CreateProjectModal from "../features/projects/components/CreateProjectModal";
+import { useProjectStore, type Project } from "../store/projectStore";
+
 
 export default function Dashboard() {
-  const [stats] = useState(statsData);
-  const [recentProjects, setRecentProjects] = useState(projectsData);
+  const navigate = useNavigate();
   const [upcomingTasks] = useState(tasksData);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  // const [newTask, setNewTask] = useState({
-  //   title: "",
-  //   project: "",
-  //   priority: "low",
-  //   dueDate: "",
-  // });
-  const [newProject, setNewProject] = useState({
-    name: "",
-    status: "active",
-    deadline: "",
-    progress: 0,
-  });
+  
+  // Get projects and methods from store
+  const { projects, addProject, getProjectStats } = useProjectStore();
+  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  
+  // Get project stats
+  const stats = getProjectStats();
+  
+  // Filter active projects for display
+  useEffect(() => {
+    const activeProjects = projects.filter(p => p.status === "active" || p.status === "planning");
+    setRecentProjects(activeProjects.slice(0, 5)); // Show only first 5 active projects
+  }, [projects]);
 
-  // const handleAddTask = () => {
-  //   if (!newTask.title || !newTask.project || !newTask.dueDate) return;
-
-  //   const task = {
-  //     id: Date.now(),
-  //     title: newTask.title,
-  //     project: newTask.project,
-  //     priority: newTask.priority,
-  //     dueDate: newTask.dueDate,
-  //   };
-
-  //   setUpcomingTasks((prev) => [task, ...prev]);
-
-  //   // reset form
-  //   setNewTask({
-  //     title: "",
-  //     project: "",
-  //     priority: "low",
-  //     dueDate: "",
-  //   });
-  // };
-
-  const handleAddProject = () => {
-    if (!newProject.name || !newProject.deadline) return;
-
-    const project = {
-      id: Date.now(),
-      name: newProject.name,
-      status: newProject.status as "active" | "pending",
-      deadline: newProject.deadline,
-      progress: newProject.progress,
-    };
-
-    setRecentProjects((prev) => [project, ...prev]);
-
-    // reset form and close modal
-    setNewProject({
-      name: "",
-      status: "active",
-      deadline: "",
-      progress: 0,
+  const handleAddProject = async (projectData: Partial<Project>) => {
+    // Add project to store
+    addProject({
+      name: projectData.name!,
+      description: projectData.description || "",
+      startDate: projectData.startDate,
+      dueDate: projectData.dueDate,
+      priority: projectData.priority || "medium",
+      status: projectData.status || "planning",
+      category: projectData.category,
+      progress: projectData.progress || 0,
+      estimatedHours: projectData.estimatedHours,
+      budget: projectData.budget,
+      projectLead: projectData.projectLead,
+      clientName: projectData.clientName,
+      teamMembers: projectData.teamMembers || [],
+      tags: projectData.tags || [],
+      goals: projectData.goals || [],
+      visibility: projectData.visibility || "private",
+      requiresApproval: projectData.requiresApproval || false,
     });
+    
     setIsProjectModalOpen(false);
   };
 
@@ -82,6 +65,7 @@ export default function Dashboard() {
         medium:
           "text-amber-500 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-800",
         low: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800",
+        urgent: "text-purple-500 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800",
       }[priority] ||
       "text-gray-500 bg-gray-50 dark:bg-gray-800 dark:text-gray-400"
     );
@@ -92,6 +76,14 @@ export default function Dashboard() {
       {
         active:
           "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400",
+        planning:
+          "bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400",
+        onHold:
+          "bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400",
+        completed:
+          "bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400",
+        archived:
+          "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
         pending:
           "bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400",
       }[status] ||
@@ -104,14 +96,7 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto p-6 lg:p-8">
         {/* HEADER */}
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-800 dark:text-slate-100 tracking-tight">
-              Dashboard
-            </h1>
-            <p className="text-gray-400 dark:text-slate-500 mt-1">
-              Manage your projects and tasks
-            </p>
-          </div>
+
 
           <button
             onClick={() => setIsProjectModalOpen(true)}
@@ -124,32 +109,32 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* STATS */}
+        {/* STATS - Now using real data from store */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {[
             {
               title: "Total Projects",
-              value: stats.totalProjects,
-              sub: `+${stats.activeProjects} active`,
+              value: stats.total,
+              sub: `+${stats.active} active`,
               icon: <FolderOpen size={18} />,
             },
             {
-              title: "Completed Tasks",
-              value: stats.completedTasks,
-              sub: `/ ${stats.totalTasks}`,
+              title: "Completed Projects",
+              value: stats.completed,
+              sub: "projects done",
               icon: <CheckCircle2 size={18} />,
             },
             {
-              title: "Pending Tasks",
-              value: stats.pendingTasks,
-              sub: "needs attention",
+              title: "Planning",
+              value: stats.planning,
+              sub: "in planning phase",
               icon: <Clock size={18} />,
             },
             {
-              title: "Team Members",
-              value: stats.teamMembers,
-              sub: "members",
-              icon: <Users size={18} />,
+              title: "On Hold",
+              value: stats.onHold,
+              sub: "waiting",
+              icon: <Clock size={18} />,
             },
           ].map((item, i) => (
             <div
@@ -190,49 +175,124 @@ export default function Dashboard() {
               <h2 className="font-semibold text-gray-800 dark:text-slate-100">
                 Active Projects
               </h2>
-              <button className="text-sm text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300 flex items-center gap-1 transition-colors">
+              <button 
+                onClick={() => navigate("/projects")}
+                className="text-sm text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300 flex items-center gap-1 transition-colors"
+              >
                 View All <ArrowUpRight size={14} />
               </button>
             </div>
 
             <div className="divide-y divide-gray-100 dark:divide-slate-800">
-              {recentProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-all duration-200 hover:pl-8 cursor-pointer group"
-                >
-                  <div className="flex justify-between mb-2">
-                    <h3 className="font-medium text-gray-800 dark:text-slate-200 group-hover:text-gray-900 dark:group-hover:text-slate-100">
-                      {project.name}
-                    </h3>
-                    <MoreHorizontal
-                      size={18}
-                      className="text-gray-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
+              {recentProjects.length > 0 ? (
+                recentProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    className="p-6 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-all duration-200 hover:pl-8 cursor-pointer group"
+                  >
+                    <div className="flex justify-between mb-2">
+                      <h3 className="font-medium text-gray-800 dark:text-slate-200 group-hover:text-gray-900 dark:group-hover:text-slate-100">
+                        {project.name}
+                      </h3>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Open project options menu
+                          console.log("Open menu for project:", project.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreHorizontal
+                          size={18}
+                          className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
+                        />
+                      </button>
+                    </div>
 
-                  <div className="flex gap-2 text-xs mb-2">
-                    <span
-                      className={`px-2 py-1 rounded-full ${getStatusColor(
-                        project.status
-                      )}`}
-                    >
-                      {project.status}
-                    </span>
-                    <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1">
-                      <Calendar size={12} />
-                      {new Date(project.deadline).toLocaleDateString()}
-                    </span>
-                  </div>
+                    {/* Project Description if available */}
+                    {project.description && (
+                      <p className="text-sm text-gray-500 dark:text-slate-400 mb-2 line-clamp-2">
+                        {project.description}
+                      </p>
+                    )}
 
-                  <div className="w-full bg-gray-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-black dark:bg-slate-600 h-full rounded-full transition-all"
-                      style={{ width: `${project.progress}%` }}
-                    />
+                    <div className="flex gap-2 text-xs mb-2 flex-wrap">
+                      {project.status && (
+                        <span
+                          className={`px-2 py-1 rounded-full ${getStatusColor(
+                            project.status
+                          )}`}
+                        >
+                          {project.status}
+                        </span>
+                      )}
+                      
+                      {project.priority && (
+                        <span
+                          className={`px-2 py-1 rounded-full ${getPriorityColor(
+                            project.priority
+                          )}`}
+                        >
+                          {project.priority} priority
+                        </span>
+                      )}
+
+                      {project.dueDate && (
+                        <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1">
+                          <Calendar size={12} />
+                          {new Date(project.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Progress Bar */}
+                    {typeof project.progress === 'number' && (
+                      <div className="w-full bg-gray-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-black dark:bg-slate-600 h-full rounded-full transition-all"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Team Members Preview */}
+                    {project.teamMembers && project.teamMembers.length > 0 && (
+                      <div className="flex -space-x-2 mt-3">
+                        {project.teamMembers.slice(0, 3).map((member, idx) => (
+                          <div
+                            key={idx}
+                            className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 
+                            border-2 border-white dark:border-slate-900 flex items-center justify-center
+                            text-indigo-600 dark:text-indigo-400 text-xs font-medium"
+                            title={typeof member === 'string' ? member : member.name}
+                          >
+                            {typeof member === 'string' ? member[0] : member.name[0]}
+                          </div>
+                        ))}
+                        {project.teamMembers.length > 3 && (
+                          <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-slate-700 
+                            border-2 border-white dark:border-slate-900 flex items-center justify-center
+                            text-gray-600 dark:text-slate-300 text-xs font-medium">
+                            +{project.teamMembers.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                ))
+              ) : (
+                <div className="p-12 text-center">
+                  <FolderOpen size={48} className="mx-auto text-gray-300 dark:text-slate-700 mb-3" />
+                  <p className="text-gray-500 dark:text-slate-400">No active projects</p>
+                  <button
+                    onClick={() => setIsProjectModalOpen(true)}
+                    className="mt-3 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700"
+                  >
+                    Create your first project →
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -242,7 +302,10 @@ export default function Dashboard() {
               <h2 className="font-semibold text-gray-800 dark:text-slate-100">
                 Upcoming Tasks
               </h2>
-              <button className="text-sm text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300 flex items-center gap-1 transition-colors">
+              <button 
+                onClick={() => navigate("/tasks")}
+                className="text-sm text-gray-400 dark:text-slate-500 hover:text-black dark:hover:text-slate-300 flex items-center gap-1 transition-colors"
+              >
                 View All <ArrowUpRight size={14} />
               </button>
             </div>
@@ -251,6 +314,7 @@ export default function Dashboard() {
               {upcomingTasks.map((task) => (
                 <div
                   key={task.id}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
                   className="p-5 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group"
                 >
                   <div className="flex justify-between items-start">
@@ -259,7 +323,7 @@ export default function Dashboard() {
                         {task.title}
                       </p>
                       <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
-                        {task.project}
+                        {task.projectName}
                       </p>
                     </div>
 
@@ -275,7 +339,7 @@ export default function Dashboard() {
                   <div className="flex gap-3 mt-3 text-xs text-gray-400 dark:text-slate-500">
                     <span className="flex items-center gap-1">
                       <Calendar size={12} />
-                      {new Date(task.dueDate).toLocaleDateString()}
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date"}
                     </span>
                     <span>•</span>
                     <span>2 days left</span>
@@ -285,143 +349,13 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* ADD TASK FORM */}
-
       </div>
 
-      {/* ADD PROJECT MODAL */}
+      {/* CREATE PROJECT MODAL */}
       {isProjectModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            {/* Backdrop */}
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-              onClick={() => setIsProjectModalOpen(false)}
-            />
-
-            {/* Modal Panel */}
-            <div className="relative transform overflow-hidden rounded-2xl bg-white dark:bg-slate-900 text-left align-middle shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-              <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-800">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-                    Create New Project
-                  </h3>
-                  <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
-                    Fill in the details to create a new project
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsProjectModalOpen(false)}
-                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X size={20} className="text-gray-400 dark:text-slate-500" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    Project Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newProject.name}
-                    onChange={(e) =>
-                      setNewProject({ ...newProject, name: e.target.value })
-                    }
-                    placeholder="Enter project name"
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 
-                    border border-gray-200 dark:border-slate-700 
-                    focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-slate-600
-                    text-gray-800 dark:text-slate-200"
-                    autoFocus
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={newProject.status}
-                    onChange={(e) =>
-                      setNewProject({ ...newProject, status: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 
-                    border border-gray-200 dark:border-slate-700 
-                    focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-slate-600
-                    text-gray-800 dark:text-slate-200"
-                  >
-                    <option value="active">Active</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    Deadline *
-                  </label>
-                  <input
-                    type="date"
-                    value={newProject.deadline}
-                    onChange={(e) =>
-                      setNewProject({ ...newProject, deadline: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 
-                    border border-gray-200 dark:border-slate-700 
-                    focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-slate-600
-                    text-gray-800 dark:text-slate-200"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    Initial Progress (%)
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={newProject.progress}
-                    onChange={(e) =>
-                      setNewProject({ ...newProject, progress: parseInt(e.target.value) })
-                    }
-                    className="w-full"
-                  />
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-gray-400 dark:text-slate-500">0%</span>
-                    <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                      {newProject.progress}%
-                    </span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500">100%</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 p-6 border-t border-gray-100 dark:border-slate-800">
-                <button
-                  onClick={() => setIsProjectModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700
-                  text-gray-700 dark:text-slate-300 font-medium
-                  hover:bg-gray-50 dark:hover:bg-slate-800 transition-all duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddProject}
-                  disabled={!newProject.name || !newProject.deadline}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-black dark:bg-slate-800 
-                  text-white dark:text-slate-100 font-medium
-                  hover:bg-gray-900 dark:hover:bg-slate-700 
-                  transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Create Project
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CreateProjectModal
+          onClose={() => setIsProjectModalOpen(false)}
+        />
       )}
     </div>
   );

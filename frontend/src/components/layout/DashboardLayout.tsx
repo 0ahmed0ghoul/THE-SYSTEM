@@ -1,45 +1,120 @@
 import { useState, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom"; // Add Outlet here
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
-export default function DashboardLayout() { // Remove children prop
+export default function DashboardLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const routeData: Record<string, any> = {
-    "/": {
-      title: "Dashboard",
-      subtitle: "Here's what's happening across The System today.",
-    },
-    "/analytics": {
-      title: "Analytics",
-      subtitle: "Track performance and insights.",
-    },
-    "/calendar": {
-      title: "Calendar",
-      subtitle: "Manage your schedule and events.",
-    },
-    "/settings": {
-      title: "Settings",
-      subtitle: "Manage your account and preferences.",
-    },
-    "/projects": {
-      title: "Projects",
-      subtitle: "View and manage your projects.",
-    },
-    "/board": {
-      title: "Board",
-      subtitle: "Manage your tasks with Kanban board.",
-    },
-    "/notifications": {  // Add this
-      title: "Notifications",
-      subtitle: "Stay updated with your latest activities.",
-    },
+  // Helper function to get breadcrumb and title based on path
+  const getRouteInfo = (pathname: string) => {
+    // Handle dynamic project routes
+    if (pathname.match(/^\/projects\/\d+$/)) {
+      const projectId = pathname.split('/')[2];
+      return {
+        title: "Project Details",
+        subtitle: "View and manage project information",
+        breadcrumb: ["Workspace", "Projects", `Project ${projectId}`],
+      };
+    }
+    
+    // Handle project board routes
+    if (pathname.match(/^\/projects\/\d+\/board$/)) {
+      const projectId = pathname.split('/')[2];
+      return {
+        title: "Project Board",
+        subtitle: "Manage tasks with Kanban board",
+        breadcrumb: ["Workspace", "Projects", `Project ${projectId}`, "Board"],
+      };
+    }
+    
+    // Handle dynamic task routes
+    if (pathname.match(/^\/tasks\/\d+$/)) {
+      const taskId = pathname.split('/')[2];
+      return {
+        title: "Task Details",
+        subtitle: "View and manage task information",
+        breadcrumb: ["Workspace", "Tasks", `Task ${taskId}`],
+      };
+    }
+    
+    // Handle new task route
+    if (pathname === "/tasks/new") {
+      return {
+        title: "Create New Task",
+        subtitle: "Add a new task to your project",
+        breadcrumb: ["Workspace", "Tasks", "Create"],
+      };
+    }
+    
+    // Handle projects list
+    if (pathname === "/projects") {
+      return {
+        title: "Projects",
+        subtitle: "View and manage all your projects",
+        breadcrumb: ["Workspace", "Projects"],
+      };
+    }
+    
+    // Handle tasks list
+    if (pathname === "/tasks") {
+      return {
+        title: "Tasks",
+        subtitle: "View and manage all your tasks",
+        breadcrumb: ["Workspace", "Tasks"],
+      };
+    }
+    
+    // Handle team page
+    if (pathname === "/team") {
+      return {
+        title: "Team",
+        subtitle: "Manage your team members and collaborations",
+        breadcrumb: ["Workspace", "Team"],
+      };
+    }
+
+    // Default route data for static pages
+    const routeData: Record<string, any> = {
+      "/": {
+        title: "Dashboard",
+        subtitle: "Here's what's happening across The System today.",
+        breadcrumb: ["Workspace", "Dashboard"],
+      },
+      "/analytics": {
+        title: "Analytics",
+        subtitle: "Track performance and insights.",
+        breadcrumb: ["Workspace", "Analytics"],
+      },
+      "/calendar": {
+        title: "Calendar",
+        subtitle: "Manage your schedule and events.",
+        breadcrumb: ["Workspace", "Calendar"],
+      },
+      "/settings": {
+        title: "Settings",
+        subtitle: "Manage your account and preferences.",
+        breadcrumb: ["Workspace", "Settings"],
+      },
+      "/board": {
+        title: "Board",
+        subtitle: "Manage your tasks with Kanban board.",
+        breadcrumb: ["Workspace", "Board"],
+      },
+      "/notifications": {
+        title: "Notifications",
+        subtitle: "Stay updated with your latest activities.",
+        breadcrumb: ["Workspace", "Notifications"],
+      },
+    };
+    
+    return routeData[pathname] || routeData["/"];
   };
-  
-  const current = routeData[location.pathname] || routeData["/"];
+
+  const current = getRouteInfo(location.pathname);
   
   // Detect screen size for responsive behavior
   useEffect(() => {
@@ -62,6 +137,37 @@ export default function DashboardLayout() { // Remove children prop
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  // Handle breadcrumb navigation
+  const handleBreadcrumbClick = (index: number, crumb: string) => {
+    if (crumb === "Workspace") {
+      navigate("/");
+    } else if (crumb === "Projects") {
+      navigate("/projects");
+    } else if (crumb === "Tasks") {
+      navigate("/tasks");
+    } else if (crumb === "Dashboard") {
+      navigate("/");
+    } else if (crumb === "Board") {
+      navigate("/board");
+    } else if (crumb === "Team") {
+      navigate("/team");
+    } else if (crumb === "Analytics") {
+      navigate("/analytics");
+    } else if (crumb === "Calendar") {
+      navigate("/calendar");
+    } else if (crumb === "Settings") {
+      navigate("/settings");
+    } else if (crumb === "Notifications") {
+      navigate("/notifications");
+    } else if (crumb.startsWith("Project ") && current.breadcrumb[index + 1] !== "Board") {
+      // Navigate to projects list if clicking on project breadcrumb
+      navigate("/projects");
+    } else if (crumb.startsWith("Task ")) {
+      navigate("/tasks");
+    }
+    // Don't navigate for dynamic IDs (Project X, Task X) - just stay on current page
   };
 
   return (
@@ -96,14 +202,25 @@ export default function DashboardLayout() { // Remove children prop
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-350 mx-auto">
             {/* Page Header with Breadcrumb */}
             <div className="mb-8">
-              <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
-                <span className="hover:text-slate-800 dark:hover:text-slate-300 cursor-pointer transition-colors">
-                  Workspace
-                </span>
-                <span className="text-slate-300 dark:text-slate-600">/</span>
-                <span className="text-indigo-600 dark:text-indigo-400">
-                  {current.title}
-                </span>
+              <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex-wrap">
+                {current.breadcrumb.map((crumb: string, index: number) => (
+                  <div key={index} className="flex items-center gap-2">
+                    {index > 0 && (
+                      <span className="text-slate-300 dark:text-slate-600">/</span>
+                    )}
+                    <span
+                      onClick={() => handleBreadcrumbClick(index, crumb)}
+                      className={`
+                        ${index === current.breadcrumb.length - 1 
+                          ? "text-indigo-600 dark:text-indigo-400 cursor-default" 
+                          : "hover:text-slate-800 dark:hover:text-slate-300 cursor-pointer transition-colors"
+                        }
+                      `}
+                    >
+                      {crumb}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
@@ -117,7 +234,7 @@ export default function DashboardLayout() { // Remove children prop
 
             {/* Dynamic Content - This is where your pages will render */}
             <div className="min-h-[60vh]">
-              <Outlet /> {/* Changed from {children} to <Outlet /> */}
+              <Outlet />
             </div>
 
             {/* Footer */}
