@@ -348,7 +348,7 @@ export default function LoginPage() {
         }
         .sys-input {
           width: 100%;
-          background: rgba(2, 12, 26, 0.8);
+          background: transparent;
           border: 1px solid rgba(79,195,247,0.2);
           border-left: none;
           color: #e0f7fa;
@@ -604,7 +604,7 @@ export default function LoginPage() {
                   <label className="sys-field-label">Communication Channel</label>
                   <div className="sys-input-wrap">
                     <input
-                      className="sys-input"
+                      className="sys-input "
                       type="email"
                       name="email"
                       placeholder="hunter@guild.com"

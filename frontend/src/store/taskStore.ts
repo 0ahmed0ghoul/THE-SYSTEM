@@ -177,6 +177,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
           userName: "Jane Smith",
           content: "Don't forget to include authentication details",
           createdAt: new Date().toISOString(),
+          userAvatar: "https://i.pravatar.cc/150?img=2",
+          
         },
       ],
       createdAt: new Date().toISOString(),
