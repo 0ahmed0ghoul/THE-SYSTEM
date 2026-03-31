@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { HttpError } from "../utils/httpError.js";
 import { signUserToken } from "../utils/jwt.js";
-import { loginUser, registerUser, getUserById } from "../services/auth.service.js";
+import { loginUser, registerUser } from "../services/auth.service.js";
 import { loginSchema, registerSchema } from "../validators/auth.validators.js";
 
 export async function registerHandler(req: Request, res: Response) {
@@ -50,13 +50,13 @@ export async function registerHandler(req: Request, res: Response) {
   }
 }
 
-// export async function loginHandler(req: Request, res: Response) {
-//   const payload = loginSchema.parse(req.body);
-//   const user = await loginUser(payload);
-//   const token = signUserToken(user);
+export async function loginHandler(req: Request, res: Response) {
+  const payload = loginSchema.parse(req.body);
+  const user = await loginUser(payload);
+  const token = signUserToken(user);
 
-//   return res.json({ user, token });
-// }
+  return res.json({ user, token });
+}
 
 // export async function meHandler(req: Request, res: Response) {
 //   const userId = req.userId!;

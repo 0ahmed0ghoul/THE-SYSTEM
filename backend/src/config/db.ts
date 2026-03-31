@@ -1,7 +1,18 @@
 import mysql from "mysql2/promise";
 import { env } from "./env.js";
+import dotenv from "dotenv";
 
-export const db = mysql.createPool(env.DATABASE_URL);
+dotenv.config();
+
+export const db = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'the system',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
 // Check connection
 (async () => {

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, XCircle } from "lucide-react";
 
 export default function LoginPage() {
-  const setUser = useAuthStore((s) => s.setUser);
+  const setUser = useAuthStore((s: any) => s.setUser);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
@@ -23,9 +23,23 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    // ✅ Basic validation
+    if (!form.email.trim() || !form.password.trim()) {
+      setError("Email and password are required");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const data = await loginRequest(form);
-      setUser(data.user);
+      const response = await loginRequest(form);
+      
+      // ✅ Store user in auth store
+      setUser({
+        id: response.user.id,
+        email: response.user.email,
+        token: response.token
+      });
+      
       setAuthorized(true);
       setTimeout(() => navigate("/"), 2000);
     } catch (err: any) {
