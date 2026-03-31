@@ -5,28 +5,66 @@ import { loginUser, registerUser, getUserById } from "../services/auth.service.j
 import { loginSchema, registerSchema } from "../validators/auth.validators.js";
 
 export async function registerHandler(req: Request, res: Response) {
-  const payload = registerSchema.parse(req.body);
-  const user = await registerUser(payload);
-  const token = signUserToken(user);
+  try {
+    // ✅ Validate input
+    const payload = registerSchema.parse(req.body);
 
-  return res.status(201).json({ user, token });
-}
+    // ✅ Create user
+    const user = await registerUser(payload);
 
-export async function loginHandler(req: Request, res: Response) {
-  const payload = loginSchema.parse(req.body);
-  const user = await loginUser(payload);
-  const token = signUserToken(user);
+    // ✅ Generate token
+    const token = signUserToken(user);
 
-  return res.json({ user, token });
-}
+    // ✅ Clean response (no sensitive data)
+    return res.status(201).json({
+      message: "User registered successfully",
+      user: {
+        id: user.id,
+        email: user.email
+      },
+      token,
+    });
 
-export async function meHandler(req: Request, res: Response) {
-  const userId = req.userId!;
-  const user = await getUserById(userId);
+  } catch (err: any) {
+    // ✅ Zod validation errors
+    if (err.name === "ZodError") {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: err.errors,
+      });
+    }
 
-  if (!user) {
-    throw new HttpError(404, "User not found");
+    // ✅ Custom HTTP errors (like email exists)
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({
+        message: err.message,
+      });
+    }
+
+    // ❌ Unknown error (don't expose details)
+    console.error("Register Error:", err);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
-
-  return res.json({ user });
 }
+
+// export async function loginHandler(req: Request, res: Response) {
+//   const payload = loginSchema.parse(req.body);
+//   const user = await loginUser(payload);
+//   const token = signUserToken(user);
+
+//   return res.json({ user, token });
+// }
+
+// export async function meHandler(req: Request, res: Response) {
+//   const userId = req.userId!;
+//   const user = await getUserById(userId);
+
+//   if (!user) {
+//     throw new HttpError(404, "User not found");
+//   }
+
+//   return res.json({ user });
+// }

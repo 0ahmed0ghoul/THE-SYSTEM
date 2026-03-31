@@ -9,16 +9,32 @@ interface UserRow extends RowDataPacket {
   password_hash: string;
 }
 
+export interface AuthResponse {
+  message?: string;
+  user: User;
+  token: string;
+}
+
 export interface PublicUser {
+  user: {
+    id: number;
+    email: string;
+  }
+  message?: string;
+}
+
+export interface User {
   id: number;
   email: string;
 }
 
 export async function registerUser(input: {
+  name: string;
   email: string;
   password: string;
-}): Promise<PublicUser> {
+}): Promise<User> {
   const email = input.email.trim().toLowerCase();
+  const name = input.name.trim();
 
   const [existingRows] = await db.execute<UserRow[]>(
     `SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1`,
@@ -32,57 +48,20 @@ export async function registerUser(input: {
   const passwordHash = await bcrypt.hash(input.password, 10);
 
   const [result] = await db.execute<ResultSetHeader>(
-    `INSERT INTO users (email, password_hash) VALUES (?, ?)`,
-    [email, passwordHash],
+    `INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)`,
+    [name, email, passwordHash],
   );
 
+  // Return ONLY the user object without message wrapper
   return {
     id: Number(result.insertId),
     email,
   };
 }
+export async function loginUser() {
 
-export async function loginUser(input: {
-  email: string;
-  password: string;
-}): Promise<PublicUser> {
-  const email = input.email.trim().toLowerCase();
-
-  const [rows] = await db.execute<UserRow[]>(
-    `SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1`,
-    [email],
-  );
-
-  const user = rows[0];
-
-  if (!user) {
-    throw new HttpError(401, "Invalid credentials");
-  }
-
-  const matches = await bcrypt.compare(input.password, user.password_hash);
-
-  if (!matches) {
-    throw new HttpError(401, "Invalid credentials");
-  }
-
-  return {
-    id: user.id,
-    email: user.email,
-  };
 }
 
-export async function getUserById(id: number): Promise<PublicUser | null> {
-  const [rows] = await db.execute<RowDataPacket[]>(
-    `SELECT id, email FROM users WHERE id = ? LIMIT 1`,
-    [id],
-  );
+export async function getUserById(){
 
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return {
-    id: Number(rows[0].id),
-    email: String(rows[0].email),
-  };
 }

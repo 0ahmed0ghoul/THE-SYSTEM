@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
-
-// --- MOCK HOOKS FOR STANDALONE PREVIEW ---
-const useAuthStore = (_: any) => (callback: (user: any) => void) => callback;
-const useNavigate = () => (path: string) => console.log("Navigate to:", path);
-const registerRequest = async (form: any) => {
-  await new Promise((r) => setTimeout(r, 1000));
-  return { user: { name: form.name, email: form.email } };
-};
+import { Eye, EyeOff} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../store/authStore";
+import { registerRequest } from "../../api/auth.api";
 
 export default function RegisterPage() {
   const setUser = useAuthStore((s: any) => s?.setUser);
@@ -51,8 +46,18 @@ export default function RegisterPage() {
     }
 
     try {
-      const data = await registerRequest(form);
-      setUser((user: any) => ({ ...user, ...data.user }));
+      const response = await registerRequest(form);
+      
+      // Store user data and token
+      setUser({
+        id: response.user.id,
+        email: response.user.email,
+        token: response.token
+      });
+      
+      // Store token in localStorage if needed
+      localStorage.setItem('token', response.token);
+      
       setAwakened(true);
       setTimeout(() => navigate("/"), 2000);
     } catch (err: any) {
@@ -61,7 +66,6 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
-
   return (
     <>
       <style>{`

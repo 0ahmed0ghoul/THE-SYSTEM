@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { loginRequest } from "./auth.api";
+import { loginRequest } from "../../api/auth.api";
 import { useAuthStore } from "../../store/authStore";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, XCircle } from "lucide-react";
