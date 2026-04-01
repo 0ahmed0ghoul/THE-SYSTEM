@@ -3,4 +3,5 @@ import { env } from "./config/env.js";
 
 app.listen(env.PORT, () => {
 	console.log(`API running on http://localhost:${env.PORT}`);
+	console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'NOT SET!');
 });

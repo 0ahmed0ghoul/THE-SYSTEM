@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+// frontend/src/pages/Dashboard.tsx
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTaskStore } from "../store/taskStore";
+import { AuthDebug } from '../components/AuthDebug';
 import {
   Plus,
   ArrowUpRight,
@@ -11,7 +12,13 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import CreateProjectModal from "../features/projects/components/CreateProjectModal";
-import { useProjectStore, type Project } from "../store/projectStore";
+import { dashboardApi } from "../api/dashboard.api";
+import type { 
+  ProjectSummary, 
+  TaskSummary, 
+  ActivityItem, 
+  DashboardStats 
+} from "../types/dashboard";
 
 type ViewType = "projects" | "tasks";
 
@@ -171,462 +178,127 @@ export default function Dashboard() {
   const [activeView, setActiveView] = useState<ViewType>("projects");
   const [activeTab, setActiveTab] = useState("all");
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  
+  // State for API data
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [projectsData, setProjectsData] = useState<ProjectSummary[]>([]);
+  const [upcomingTasksData, setUpcomingTasksData] = useState<TaskSummary[]>([]);
+  const [activityData, setActivityData] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { projects, addProject, getProjectStats } = useProjectStore();
-  const { tasks } = useTaskStore();
-
-  const [recentProjects, setRecentProjects] = useState<Project[]>([]);
-  const [upcomingTasks, setUpcomingTasks] = useState<any[]>([]);
-
-  const stats = getProjectStats();
-
+  // Fetch dashboard data
   useEffect(() => {
-    let filtered = projects;
-    if (activeTab === "active") filtered = projects.filter((p) => p.status === "active");
-    else if (activeTab === "planning") filtered = projects.filter((p) => p.status === "planning");
-    else if (activeTab === "done") filtered = projects.filter((p) => p.status === "completed");
-    else filtered = projects.filter((p) => p.status === "active" || p.status === "planning");
-    setRecentProjects(filtered.slice(0, 6));
-  }, [projects, activeTab]);
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch all data in parallel
+        const [statsData, projects, tasks, activities] = await Promise.all([
+          dashboardApi.getStats(),
+          dashboardApi.getRecentProjects(100, 'all'),
+          dashboardApi.getUpcomingTasks(8),
+          dashboardApi.getActivityFeed(10)
+        ]);
+        
+        setStats(statsData);
+        setProjectsData(projects);
+        setUpcomingTasksData(tasks);
+        setActivityData(activities);
+      } catch (err: any) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
 
-  useEffect(() => {
-    setUpcomingTasks(tasks.filter((t) => t.status !== "done").slice(0, 8));
-  }, [tasks]);
+  // Filter projects based on active tab
+  const recentProjects = projectsData
+    .filter((project: ProjectSummary) => {
+      if (activeTab === "all") return project.status === "active" || project.status === "planning";
+      if (activeTab === "active") return project.status === "active";
+      if (activeTab === "planning") return project.status === "planning";
+      if (activeTab === "done") return project.status === "completed";
+      return true;
+    })
+    .slice(0, 6);
 
-  const handleAddProject = async (projectData: Partial<Project>) => {
-    addProject({
-      name: projectData.name!,
-      description: projectData.description || "",
-      startDate: projectData.startDate,
-      dueDate: projectData.dueDate,
-      priority: projectData.priority || "medium",
-      status: projectData.status || "planning",
-      category: projectData.category,
-      progress: projectData.progress || 0,
-      estimatedHours: projectData.estimatedHours,
-      budget: projectData.budget,
-      projectLead: projectData.projectLead,
-      clientName: projectData.clientName,
-      teamMembers: projectData.teamMembers || [],
-      tags: projectData.tags || [],
-      goals: projectData.goals || [],
-      visibility: projectData.visibility || "private",
-      requiresApproval: projectData.requiresApproval || false,
-    });
-    setIsProjectModalOpen(false);
+  const urgentCount = projectsData.filter((p: ProjectSummary) => p.priority === "urgent").length;
+
+  // Calculate stats if not available from API
+  const dashboardStats = stats || {
+    totalProjects: projectsData.length,
+    activeProjects: projectsData.filter((p: ProjectSummary) => p.status === "active").length,
+    planningProjects: projectsData.filter((p: ProjectSummary) => p.status === "planning").length,
+    completedProjects: projectsData.filter((p: ProjectSummary) => p.status === "completed").length,
+    onHoldProjects: projectsData.filter((p: ProjectSummary) => p.status === "onHold").length,
+    archivedProjects: projectsData.filter((p: ProjectSummary) => p.status === "archived").length,
+    urgentProjects: projectsData.filter((p: ProjectSummary) => p.priority === "urgent").length,
+    highPriorityProjects: projectsData.filter((p: ProjectSummary) => p.priority === "high").length,
+    totalTasks: upcomingTasksData.length,
+    activeTasks: upcomingTasksData.filter((t: TaskSummary) => t.status !== "done").length,
+    inProgressTasks: upcomingTasksData.filter((t: TaskSummary) => t.status === "inprogress").length,
+    reviewTasks: upcomingTasksData.filter((t: TaskSummary) => t.status === "review").length,
+    completedTasks: upcomingTasksData.filter((t: TaskSummary) => t.status === "done").length,
+    completionRate: projectsData.length > 0 
+      ? (projectsData.filter((p: ProjectSummary) => p.status === "completed").length / projectsData.length) * 100 
+      : 0,
   };
 
-  const urgentCount = projects.filter((p) => p.priority === "urgent").length;
+  // Transform activity data for display
+  const activityLog = activityData.slice(0, 4).map((activity: ActivityItem) => ({
+    color: activity.type === 'project' ? 'var(--sys-blue)' : 
+           activity.action === 'completed' ? 'var(--sys-green)' : 
+           activity.action === 'created' ? 'var(--sys-gold)' : 'var(--sys-red)',
+    text: activity.description,
+    time: new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }));
+
+  // Default activity log if none from API
+  const defaultActivityLog = [
+    { color: "var(--sys-blue)", text: "System initialized", time: "Just now" },
+    { color: "var(--sys-green)", text: "Dashboard connected", time: "1 min ago" },
+  ];
+
+  const displayActivityLog = activityLog.length > 0 ? activityLog : defaultActivityLog;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="sys-dashboard flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-[#4fc3f7] mb-4 font-[Rajdhani] tracking-wider">Loading command center...</div>
+          <div className="w-8 h-8 border-2 border-[#4fc3f7] border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="sys-dashboard flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-400 mb-4 font-[Rajdhani] tracking-wider">Error loading dashboard</div>
+          <div className="text-[rgba(79,195,247,0.5)] text-sm">{error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 border border-[rgba(79,195,247,0.3)] text-[#4fc3f7] text-sm hover:bg-[rgba(79,195,247,0.1)] transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
-
-        :root {
-          --sys-blue: #4fc3f7;
-          --sys-green: #4fe6a0;
-          --sys-gold: #ffd54f;
-          --sys-red: #ff6b6b;
-          --sys-amber: #ffb347;
-          --sys-dark: #020c1a;
-          --sys-panel: rgba(4,18,38,0.95);
-          --sys-border: rgba(79,195,247,0.2);
-        }
-
-        .sys-dashboard {
-          min-height: 100vh;
-          background: var(--sys-dark);
-          font-family: 'Rajdhani', sans-serif;
-          color: #e0f7fa;
-          position: relative;
-          overflow-x: hidden;
-        }
-
-        /* Background layers */
-        .sys-bg-grid {
-          position: fixed; inset: 0;
-          background-image: radial-gradient(circle, rgba(79,195,247,0.055) 1px, transparent 1px);
-          background-size: 30px 30px;
-          pointer-events: none; z-index: 0;
-        }
-        .sys-bg-orb1 {
-          position: fixed; width: 900px; height: 900px; top: -300px; left: -250px;
-          background: radial-gradient(circle, rgba(2,80,160,0.13) 0%, transparent 70%);
-          border-radius: 50%; pointer-events: none; z-index: 0; filter: blur(20px);
-        }
-        .sys-bg-orb2 {
-          position: fixed; width: 600px; height: 600px; bottom: -200px; right: -100px;
-          background: radial-gradient(circle, rgba(79,195,247,0.07) 0%, transparent 70%);
-          border-radius: 50%; pointer-events: none; z-index: 0; filter: blur(20px);
-        }
-        .sys-scanlines {
-          position: fixed; inset: 0;
-          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(79,195,247,0.012) 2px, rgba(79,195,247,0.012) 4px);
-          pointer-events: none; z-index: 0;
-        }
-        .sys-content { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 20px 24px; }
-
-        /* Topbar */
-        .sys-topbar {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 20px;
-          background: rgba(4,12,28,0.92);
-          border: 1px solid var(--sys-border);
-          margin-bottom: 22px;
-          position: relative; overflow: hidden;
-        }
-        .sys-topbar::after {
-          content: '';
-          position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(79,195,247,0.025), transparent);
-          animation: tb-sweep 7s ease-in-out infinite;
-        }
-        @keyframes tb-sweep { 0% { left:-100% } 60% { left:160% } 100% { left:160% } }
-
-        .sys-logo { display: flex; align-items: center; gap: 10px; }
-        .sys-logo-icon {
-          width: 34px; height: 34px;
-          border: 1px solid rgba(79,195,247,0.4);
-          display: flex; align-items: center; justify-content: center;
-          font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700; color: var(--sys-blue);
-          position: relative;
-        }
-        .sys-logo-icon::before {
-          content: ''; position: absolute; inset: -4px;
-          border: 1px solid rgba(79,195,247,0.13);
-        }
-        .sys-logo-name {
-          font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
-          letter-spacing: 3px; color: #e0f7fa;
-        }
-        .sys-topbar-meta { display: flex; align-items: center; gap: 18px; }
-        .sys-tb-item {
-          font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(79,195,247,0.35); display: flex; align-items: center; gap: 5px;
-        }
-        .sys-online-dot {
-          width: 5px; height: 5px; border-radius: 50%;
-          background: var(--sys-green);
-          animation: dot-pulse 2s ease-in-out infinite;
-        }
-        @keyframes dot-pulse {
-          0%,100% { opacity:1; box-shadow: 0 0 4px var(--sys-green); }
-          50%      { opacity:0.4; box-shadow: none; }
-        }
-        .sys-rank-badge {
-          font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
-          letter-spacing: 3px; color: var(--sys-gold);
-          border: 1px solid rgba(255,213,79,0.35);
-          padding: 3px 12px;
-          text-shadow: 0 0 10px rgba(255,213,79,0.45);
-        }
-
-        /* Page header */
-        .sys-page-head { margin-bottom: 22px; padding: 0 2px; }
-        .sys-page-title {
-          font-family: 'Cinzel', serif; font-size: 28px; font-weight: 900;
-          letter-spacing: 3px;
-          background: linear-gradient(135deg, #e0f7fa, var(--sys-blue));
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        }
-        .sys-page-sub {
-          font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
-          color: rgba(79,195,247,0.32); margin-top: 3px;
-        }
-        .sys-page-divider {
-          height: 1px; margin-top: 12px;
-          background: linear-gradient(90deg, var(--sys-blue), rgba(79,195,247,0.1), transparent);
-        }
-
-        /* Stats grid */
-        .sys-stats-grid {
-          display: grid; grid-template-columns: repeat(4, 1fr);
-          gap: 12px; margin-bottom: 22px;
-        }
-
-        /* Content grid */
-        .sys-content-grid {
-          display: grid; grid-template-columns: 1fr 340px;
-          gap: 14px;
-        }
-
-        /* Panel shared */
-        .sys-panel {
-          background: var(--sys-panel);
-          border: 1px solid var(--sys-border);
-          overflow: hidden;
-        }
-        .sys-panel-head {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 14px 18px;
-          border-bottom: 1px solid rgba(79,195,247,0.1);
-        }
-        .sys-panel-head-left { display: flex; align-items: center; gap: 10px; }
-        .sys-panel-badge {
-          width: 3px; height: 16px;
-          background: var(--sys-blue);
-          box-shadow: 0 0 6px var(--sys-blue);
-        }
-        .sys-panel-title {
-          font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700;
-          letter-spacing: 2px; color: #e0f7fa;
-        }
-        .sys-panel-count {
-          font-size: 10px; letter-spacing: 2px;
-          background: rgba(79,195,247,0.07);
-          border: 1px solid rgba(79,195,247,0.2);
-          padding: 2px 8px;
-          color: rgba(79,195,247,0.55);
-        }
-        .sys-new-btn {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(79,195,247,0.4);
-          background: none;
-          border: 1px solid rgba(79,195,247,0.2);
-          padding: 5px 12px; cursor: pointer;
-          font-family: 'Rajdhani', sans-serif;
-          transition: all 0.2s;
-        }
-        .sys-new-btn:hover { border-color: var(--sys-blue); color: var(--sys-blue); }
-
-        /* Gate alert */
-        .sys-gate-alert {
-          display: flex; align-items: center; gap: 10px;
-          padding: 8px 18px;
-          background: rgba(255,107,107,0.04);
-          border-left: 2px solid rgba(255,107,107,0.6);
-        }
-        .sys-alert-tag {
-          font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700;
-          color: var(--sys-red);
-          border: 1px solid rgba(255,107,107,0.4);
-          padding: 1px 7px;
-          animation: alert-pulse 2s ease-in-out infinite;
-        }
-        @keyframes alert-pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }
-        .sys-alert-txt {
-          font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
-          color: rgba(255,107,107,0.65);
-        }
-
-        /* Tab row */
-        .sys-tab-row {
-          display: flex; gap: 0;
-          border-bottom: 1px solid rgba(79,195,247,0.1);
-          padding: 0 18px;
-        }
-        .sys-tab {
-          font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
-          padding: 10px 14px; cursor: pointer;
-          border-bottom: 2px solid transparent;
-          transition: all 0.2s;
-          color: rgba(79,195,247,0.35);
-          background: none; border-left: none; border-right: none; border-top: none;
-          font-family: 'Rajdhani', sans-serif;
-        }
-        .sys-tab.active { color: var(--sys-blue); border-bottom-color: var(--sys-blue); }
-        .sys-tab:hover:not(.active) { color: rgba(79,195,247,0.6); }
-
-        /* Project rows */
-        .sys-proj-list { max-height: 460px; overflow-y: auto; }
-        .sys-proj-list::-webkit-scrollbar { width: 3px; }
-        .sys-proj-list::-webkit-scrollbar-track { background: transparent; }
-        .sys-proj-list::-webkit-scrollbar-thumb { background: rgba(79,195,247,0.18); }
-
-        .sys-proj-row {
-          display: flex; align-items: flex-start; gap: 14px;
-          padding: 15px 18px;
-          border-bottom: 1px solid rgba(79,195,247,0.07);
-          cursor: pointer; position: relative;
-          transition: background 0.2s;
-        }
-        .sys-proj-row:hover { background: rgba(79,195,247,0.04); }
-        .sys-proj-row:hover .sys-pr-corners { opacity: 1; }
-
-        /* Corner hover effect */
-        .sys-pr-corners {
-          position: absolute; inset: 0; pointer-events: none;
-          opacity: 0; transition: opacity 0.2s;
-        }
-        .sys-pr-corners::before, .sys-pr-corners::after,
-        .sys-pr-corners .prc-br, .sys-pr-corners .prc-bl {
-          content: ''; position: absolute;
-          width: 10px; height: 10px;
-          border-color: rgba(79,195,247,0.38); border-style: solid;
-        }
-        .sys-pr-corners::before { top: 4px; left: 4px; border-width: 1px 0 0 1px; }
-        .sys-pr-corners::after  { top: 4px; right: 4px; border-width: 1px 1px 0 0; }
-        .sys-pr-corners .prc-br { bottom: 4px; right: 4px; border-width: 0 1px 1px 0; }
-        .sys-pr-corners .prc-bl { bottom: 4px; left: 4px; border-width: 0 0 1px 1px; }
-
-        /* Rank badge */
-        .sys-rank-box {
-          width: 36px; height: 36px; flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center;
-          font-family: 'Cinzel', serif; font-size: 16px; font-weight: 900;
-          border: 1px solid; position: relative;
-        }
-
-        /* Project body */
-        .sys-pr-name {
-          font-size: 14px; font-weight: 600; letter-spacing: 0.4px;
-          color: #c8e8f8; transition: color 0.2s;
-        }
-        .sys-proj-row:hover .sys-pr-name { color: #fff; }
-        .sys-pr-tag {
-          font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
-          padding: 2px 7px; border: 1px solid; flex-shrink: 0;
-        }
-        .sys-pr-desc {
-          font-size: 12px; color: rgba(79,195,247,0.32);
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          margin: 4px 0 8px;
-        }
-        .sys-pr-meta { display: flex; align-items: center; gap: 14px; }
-        .sys-pr-meta-item {
-          font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
-          color: rgba(79,195,247,0.3); display: flex; align-items: center; gap: 4px;
-        }
-        .sys-pr-prog-label {
-          display: flex; justify-content: space-between;
-          font-size: 10px; letter-spacing: 1px;
-          color: rgba(79,195,247,0.3); margin-bottom: 4px;
-        }
-        .sys-pr-track {
-          height: 3px; background: rgba(79,195,247,0.08); overflow: hidden;
-        }
-        .sys-pr-fill { height: 100%; transition: width 1s ease; }
-
-        /* Empty state */
-        .sys-empty {
-          padding: 48px; text-align: center;
-        }
-        .sys-empty-icon {
-          font-size: 40px; opacity: 0.15; margin-bottom: 12px;
-        }
-        .sys-empty-txt {
-          font-size: 13px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(79,195,247,0.3);
-        }
-        .sys-empty-link {
-          margin-top: 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(79,195,247,0.4); background: none; border: none; cursor: pointer;
-          font-family: 'Rajdhani', sans-serif; transition: color 0.2s;
-        }
-        .sys-empty-link:hover { color: var(--sys-blue); }
-
-        /* New project dashed btn */
-        .sys-add-gate {
-          display: flex; align-items: center; justify-content: center; gap: 6px;
-          margin: 14px 18px;
-          padding: 9px;
-          border: 1px dashed rgba(79,195,247,0.18);
-          font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700;
-          letter-spacing: 3px; text-transform: uppercase;
-          color: rgba(79,195,247,0.3);
-          cursor: pointer; background: none; width: calc(100% - 36px);
-          transition: all 0.2s;
-        }
-        .sys-add-gate:hover {
-          border-color: rgba(79,195,247,0.45);
-          color: var(--sys-blue);
-          background: rgba(79,195,247,0.03);
-        }
-
-        /* View more */
-        .sys-view-more {
-          display: flex; align-items: center; justify-content: center; gap: 5px;
-          padding: 10px; width: 100%;
-          font-size: 10px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
-          color: rgba(79,195,247,0.28);
-          background: none;
-          border: none; border-top: 1px solid rgba(79,195,247,0.08);
-          cursor: pointer; font-family: 'Rajdhani', sans-serif;
-          transition: color 0.2s;
-        }
-        .sys-view-more:hover { color: var(--sys-blue); }
-
-        /* Quest board */
-        .sys-quest-item {
-          padding: 12px 16px;
-          border-bottom: 1px solid rgba(79,195,247,0.07);
-          cursor: pointer; transition: background 0.2s;
-        }
-        .sys-quest-item:hover { background: rgba(79,195,247,0.04); }
-        .sys-quest-title {
-          font-size: 13px; font-weight: 500; letter-spacing: 0.3px;
-          color: #c0dff0; line-height: 1.3;
-        }
-        .sys-quest-status {
-          font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
-          padding: 2px 7px; border: 1px solid;
-        }
-
-        /* Mini stat cards */
-        .sys-mini-stats {
-          display: grid; grid-template-columns: 1fr 1fr;
-          gap: 8px; padding: 14px 16px;
-        }
-        .sys-ms-item {
-          background: rgba(79,195,247,0.03);
-          border: 1px solid rgba(79,195,247,0.1);
-          padding: 10px 12px;
-        }
-        .sys-ms-val {
-          font-family: 'Cinzel', serif; font-size: 22px; font-weight: 700;
-        }
-        .sys-ms-label {
-          font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(79,195,247,0.32); margin-top: 2px;
-        }
-
-        /* Activity feed */
-        .sys-act-item {
-          display: flex; align-items: flex-start; gap: 10px;
-          padding: 9px 16px;
-          border-bottom: 1px solid rgba(79,195,247,0.06);
-        }
-        .sys-act-dot {
-          width: 7px; height: 7px;
-          transform: rotate(45deg); border-radius: 1px;
-          flex-shrink: 0; margin-top: 3px;
-        }
-        .sys-act-txt {
-          font-size: 12px; color: rgba(200,230,255,0.45); letter-spacing: 0.3px; line-height: 1.4;
-        }
-        .sys-act-time {
-          font-size: 10px; color: rgba(79,195,247,0.22); letter-spacing: 1px; margin-top: 2px;
-        }
-
-        /* Bottom bar */
-        .sys-bottom-bar {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-top: 14px; padding: 8px 16px;
-          background: rgba(4,12,28,0.85);
-          border: 1px solid rgba(79,195,247,0.1);
-          font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-          color: rgba(79,195,247,0.25);
-        }
-
-        /* Animations */
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-          .sys-content-grid { grid-template-columns: 1fr; }
-          .sys-stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 640px) {
-          .sys-stats-grid { grid-template-columns: 1fr 1fr; }
-          .sys-topbar-meta { display: none; }
-        }
-      `}</style>
-
+      <AuthDebug/>
       <div className="sys-dashboard">
         <div className="sys-bg-grid" />
         <div className="sys-bg-orb1" />
@@ -647,10 +319,10 @@ export default function Dashboard() {
                 Command Active
               </span>
               <span className="sys-tb-item">
-                Gates: {stats.active + stats.planning} Open
+                Gates: {dashboardStats.activeProjects + dashboardStats.planningProjects} Open
               </span>
               <span className="sys-tb-item">
-                Quests: {upcomingTasks.length} Active
+                Quests: {upcomingTasksData.length} Active
               </span>
               <div className="sys-rank-badge">S-RANK HUNTER</div>
             </div>
@@ -667,38 +339,38 @@ export default function Dashboard() {
           <div className="sys-stats-grid">
             <StatCard
               label="Active Gates"
-              value={stats.active + stats.planning}
-              sub={`${stats.active} in progress`}
+              value={dashboardStats.activeProjects + dashboardStats.planningProjects}
+              sub={`${dashboardStats.activeProjects} in progress`}
               accent="#4fc3f7"
               icon="⬡"
-              barWidth={Math.min(((stats.active + stats.planning) / Math.max(stats.total, 1)) * 100, 100)}
+              barWidth={Math.min(((dashboardStats.activeProjects + dashboardStats.planningProjects) / Math.max(dashboardStats.totalProjects, 1)) * 100, 100)}
               delay="0.08s"
             />
             <StatCard
               label="Cleared"
-              value={stats.completed}
+              value={dashboardStats.completedProjects}
               sub="Gates cleared"
               accent="#4fe6a0"
               icon="✦"
-              barWidth={Math.min((stats.completed / Math.max(stats.total, 1)) * 100, 100)}
+              barWidth={Math.min((dashboardStats.completedProjects / Math.max(dashboardStats.totalProjects, 1)) * 100, 100)}
               delay="0.12s"
             />
             <StatCard
               label="Active Quests"
-              value={upcomingTasks.length}
+              value={upcomingTasksData.length}
               sub="Tasks in queue"
               accent="#ffd54f"
               icon="◈"
-              barWidth={Math.min((upcomingTasks.length / 20) * 100, 100)}
+              barWidth={Math.min((upcomingTasksData.length / 20) * 100, 100)}
               delay="0.16s"
             />
             <StatCard
               label="On Hold"
-              value={stats.onHold}
+              value={dashboardStats.onHoldProjects}
               sub="Suspended operations"
               accent="#ff6b6b"
               icon="⚠"
-              barWidth={Math.min((stats.onHold / Math.max(stats.total, 1)) * 100, 100)}
+              barWidth={Math.min((dashboardStats.onHoldProjects / Math.max(dashboardStats.totalProjects, 1)) * 100, 100)}
               delay="0.2s"
             />
           </div>
@@ -743,7 +415,7 @@ export default function Dashboard() {
                     QUEST BOARD
                   </button>
                   <span className="sys-panel-count">
-                    {activeView === "projects" ? `${recentProjects.length} OPEN` : `${upcomingTasks.length} ACTIVE`}
+                    {activeView === "projects" ? `${recentProjects.length} OPEN` : `${upcomingTasksData.length} ACTIVE`}
                   </span>
                 </div>
                 <button className="sys-new-btn" onClick={() => setIsProjectModalOpen(true)}>
@@ -783,7 +455,7 @@ export default function Dashboard() {
                 <>
                   <div className="sys-proj-list">
                     {recentProjects.length > 0 ? (
-                      recentProjects.map((project) => {
+                      recentProjects.map((project: ProjectSummary) => {
                         const rank = getProjectRank(project.priority ?? "medium");
                         const rs = getRankStyle(rank);
                         const prog = project.progress ?? 0;
@@ -895,8 +567,8 @@ export default function Dashboard() {
               {activeView === "tasks" && (
                 <>
                   <div className="sys-proj-list">
-                    {upcomingTasks.length > 0 ? (
-                      upcomingTasks.map((task) => {
+                    {upcomingTasksData.length > 0 ? (
+                      upcomingTasksData.map((task: TaskSummary) => {
                         const rank = getProjectRank(task.priority ?? "medium");
                         const rs = getRankStyle(rank);
                         const ts = taskStatusStyle(task.status);
@@ -946,7 +618,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  {upcomingTasks.length > 0 && (
+                  {upcomingTasksData.length > 0 && (
                     <button className="sys-view-more" onClick={() => navigate("/tasks")}>
                       VIEW ALL QUESTS <ArrowUpRight size={11} />
                     </button>
@@ -969,14 +641,14 @@ export default function Dashboard() {
                 <div className="sys-mini-stats">
                   {[
                     {
-                      val: stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : "0%",
+                      val: dashboardStats.totalProjects > 0 ? `${Math.round((dashboardStats.completedProjects / dashboardStats.totalProjects) * 100)}%` : "0%",
                       label: "Completion",
                       color: "var(--sys-blue)",
                     },
-                    { val: `+${stats.active}`, label: "This Cycle", color: "var(--sys-green)" },
-                    { val: `${upcomingTasks.filter(t => t.status === "inprogress").length}`, label: "In Progress", color: "var(--sys-gold)" },
+                    { val: `+${dashboardStats.activeProjects}`, label: "This Cycle", color: "var(--sys-green)" },
+                    { val: `${upcomingTasksData.filter((t: TaskSummary) => t.status === "inprogress").length}`, label: "In Progress", color: "var(--sys-gold)" },
                     {
-                      val: `${projects.filter(p => p.priority === "urgent" || p.priority === "high").length}`,
+                      val: `${projectsData.filter((p: ProjectSummary) => p.priority === "urgent" || p.priority === "high").length}`,
                       label: "High Priority",
                       color: "var(--sys-red)",
                     },
@@ -992,7 +664,7 @@ export default function Dashboard() {
               </div>
 
               {/* Recent quests when in projects view */}
-              {activeView === "projects" && upcomingTasks.length > 0 && (
+              {activeView === "projects" && upcomingTasksData.length > 0 && (
                 <div className="sys-panel" style={{ animation: "fade-in-up .4s .32s ease both" }}>
                   <div className="sys-panel-head">
                     <div className="sys-panel-head-left">
@@ -1000,10 +672,10 @@ export default function Dashboard() {
                       <span className="sys-panel-title">PENDING QUESTS</span>
                     </div>
                     <span className="sys-panel-count" style={{ color: "rgba(255,213,79,0.5)", borderColor: "rgba(255,213,79,0.2)" }}>
-                      {upcomingTasks.length} ACTIVE
+                      {upcomingTasksData.length} ACTIVE
                     </span>
                   </div>
-                  {upcomingTasks.slice(0, 5).map((task) => {
+                  {upcomingTasksData.slice(0, 5).map((task: TaskSummary) => {
                     const rank = getProjectRank(task.priority ?? "medium");
                     const rs = getRankStyle(rank);
                     const ts = taskStatusStyle(task.status);
@@ -1050,12 +722,7 @@ export default function Dashboard() {
                     <span className="sys-panel-title">SYSTEM LOG</span>
                   </div>
                 </div>
-                {[
-                  { color: "var(--sys-blue)", text: "Project status updated to Active", time: "2 min ago" },
-                  { color: "var(--sys-green)", text: "Quest marked as complete", time: "18 min ago" },
-                  { color: "var(--sys-gold)", text: "New team member joined gate", time: "1h ago" },
-                  { color: "var(--sys-red)", text: "Deadline alert on S-Rank gate", time: "2h ago" },
-                ].map((a, i) => (
+                {displayActivityLog.map((a, i) => (
                   <div key={i} className="sys-act-item">
                     <div className="sys-act-dot" style={{ background: a.color }} />
                     <div>
@@ -1073,7 +740,7 @@ export default function Dashboard() {
           <div className="sys-bottom-bar" style={{ animation: "fade-in-up .4s .4s ease both" }}>
             <span>System v4.2.1 · All gates monitored</span>
             <span style={{ color: "rgba(79,230,160,0.5)" }}>⬡ Command center online</span>
-            <span>Last sync: just now</span>
+            <span>Last sync: {new Date().toLocaleTimeString()}</span>
           </div>
 
         </div>

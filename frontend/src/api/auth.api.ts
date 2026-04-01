@@ -1,57 +1,77 @@
-import type { LoginPayload } from "../features/auth/types";
-import type { RegisterPayload } from "../features/auth/validators";
-import type  { User } from "../features/auth/types";
-import axios from "axios";
-import type { LoginResponse, RegisterResponse } from "../types/auth";
-import { api } from "../services/api";
+// frontend/src/api/auth.api.ts
+import { AuthService } from '../services/auth.service';
+import {type LoginPayload,type RegisterPayload,type AuthResponse,type User } from '../types/auth.types';
 
-export const loginRequest = async (data: LoginPayload): Promise<LoginResponse> => {
-  try {
-    const res = await api.post<LoginResponse>("/auth/login", {
-      email: data.email,
-      password: data.password,
-    });
-    
-    if (res.data.token) {
-      localStorage.setItem('token', res.data.token);
-    }
-    
-    return res.data;
-  } catch (err: any) {
-    throw {
-      response: {
-        data: {
-          message: err.response?.data?.message || "Access denied. Invalid credentials.",
-          errors: err.response?.data?.errors,
-        },
-        status: err.response?.status,
-      },
-    };
-  }
+/**
+ * Authentication API Handlers
+ * These are thin wrappers around the service layer
+ */
+export const authApi = {
+  /**
+   * Login user
+   */
+  login: async (data: LoginPayload): Promise<AuthResponse> => {
+    return await AuthService.login(data);
+  },
+
+  /**
+   * Register new user
+   */
+  register: async (data: RegisterPayload): Promise<AuthResponse> => {
+    return await AuthService.register(data);
+  },
+
+  /**
+   * Logout user
+   */
+  logout: async (): Promise<void> => {
+    return await AuthService.logout();
+  },
+
+  /**
+   * Get current user profile
+   */
+  getCurrentUser: async (): Promise<User> => {
+    return await AuthService.getCurrentUser();
+  },
+
+  /**
+   * Change password
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    return await AuthService.changePassword(currentPassword, newPassword);
+  },
+
+  /**
+   * Request password reset
+   */
+  forgotPassword: async (email: string): Promise<void> => {
+    return await AuthService.requestPasswordReset(email);
+  },
+
+  /**
+   * Reset password with token
+   */
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    return await AuthService.resetPassword(token, newPassword);
+  },
+
+  /**
+   * Verify email
+   */
+  verifyEmail: async (token: string): Promise<void> => {
+    return await AuthService.verifyEmail(token);
+  },
+
+  /**
+   * Resend verification email
+   */
+  resendVerification: async (email: string): Promise<void> => {
+    return await AuthService.resendVerificationEmail(email);
+  },
 };
 
-export const registerRequest = async (data: RegisterPayload): Promise<RegisterResponse> => {
-  try {
-    const res = await api.post<RegisterResponse>("/auth/register", {
-      name: data.name,
-      email: data.email,
-      password: data.password,
-    });
-    
-    if (res.data.token) {
-      localStorage.setItem('token', res.data.token);
-    }
-    
-    return res.data;
-  } catch (err: any) {
-    throw {
-      response: {
-        data: {
-          message: err.response?.data?.message || "Registration failed. Try again.",
-          errors: err.response?.data?.errors,
-        },
-        status: err.response?.status,
-      },
-    };
-  }
-};
+// Backward compatibility exports
+export const loginRequest = authApi.login;
+export const registerRequest = authApi.register;
+export const logoutRequest = authApi.logout;

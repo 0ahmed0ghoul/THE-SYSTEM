@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { loginRequest } from "../../api/auth.api";
 import { useAuthStore } from "../../store/authStore";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, XCircle } from "lucide-react";
+import { authApi } from "../../api/auth.api";
 
 export default function LoginPage() {
-  const setUser = useAuthStore((s: any) => s.setUser);
+  const { setAuth, checkAuth } = useAuthStore();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: "", password: "" });
@@ -23,7 +23,6 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    // ✅ Basic validation
     if (!form.email.trim() || !form.password.trim()) {
       setError("Email and password are required");
       setLoading(false);
@@ -31,24 +30,39 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await loginRequest(form);
+      const response = await authApi.login(form);
       
-      // ✅ Store user in auth store
-      setUser({
-        id: response.user.id,
-        email: response.user.email,
-        token: response.token
+      console.log('Login response:', { 
+        success: response.success, 
+        hasToken: !!response.token,
+        hasUser: !!response.user 
       });
       
-      setAuthorized(true);
-      setTimeout(() => navigate("/"), 2000);
+      if (response.token && response.user) {
+        // Store auth data
+        setAuth(response.user, response.token);
+        
+        // Verify auth was stored correctly
+        const isAuthed = checkAuth();
+        console.log('Auth verification after login:', isAuthed);
+        
+        if (isAuthed) {
+          setAuthorized(true);
+          // Navigate to home page
+          setTimeout(() => navigate("/"), 2000);
+        } else {
+          setError("Authentication verification failed. Please try again.");
+        }
+      } else {
+        setError(response.message || "Login failed. Please try again.");
+      }
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.response?.data?.message || "Access denied. Invalid credentials.");
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <>
       <style>{`
@@ -158,7 +172,6 @@ export default function LoginPage() {
           100% { opacity: 0; transform: translateY(-100vh) scale(0.3); }
         }
 
-        /* ====== PANEL ====== */
         .panel-wrap {
           position: relative;
           z-index: 10;
@@ -242,7 +255,6 @@ export default function LoginPage() {
           z-index: 0;
         }
 
-        /* ====== STATUS BAR ====== */
         .status-bar {
           display: flex;
           align-items: center;
@@ -265,7 +277,6 @@ export default function LoginPage() {
           50%      { opacity: 0.4; box-shadow: none; }
         }
 
-        /* ====== HEADER ====== */
         .sys-header {
           text-align: center;
           margin-bottom: 24px;
@@ -324,7 +335,6 @@ export default function LoginPage() {
         }
         .sys-subtitle { font-size: 11px; letter-spacing: 6px; text-transform: uppercase; color: rgba(79,195,247,0.42); font-weight: 500; }
 
-        /* Welcome text */
         .welcome-box {
           border: 1px solid rgba(79,195,247,0.12);
           background: rgba(79,195,247,0.03);
@@ -347,7 +357,6 @@ export default function LoginPage() {
         .welcome-txt { font-size: 12px; color: rgba(200,230,255,0.45); letter-spacing: 0.5px; line-height: 1.6; }
         .welcome-txt strong { color: rgba(79,195,247,0.8); font-weight: 600; display: block; letter-spacing: 1px; font-size: 11px; text-transform: uppercase; }
 
-        /* ====== FORM ====== */
         .sys-form { display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1; }
         .sys-field-label {
           display: block;
@@ -388,7 +397,6 @@ export default function LoginPage() {
         }
         .sys-input-icon:hover { color: var(--sys-blue); }
 
-        /* Forgot password */
         .forgot-row {
           display: flex;
           justify-content: flex-end;
@@ -404,7 +412,6 @@ export default function LoginPage() {
         }
         .forgot-link:hover { color: var(--sys-blue); }
 
-        /* ====== SUBMIT BUTTON ====== */
         .sys-btn {
           width: 100%;
           position: relative;
@@ -444,7 +451,6 @@ export default function LoginPage() {
         .sys-btn-arrow { transition: transform 0.3s; font-size: 18px; line-height: 1; }
         .sys-btn:hover .sys-btn-arrow { transform: translateX(4px); }
 
-        /* ====== DIVIDER ====== */
         .sys-divider {
           display: flex; align-items: center; gap: 10px;
           margin: 4px 0;
@@ -453,7 +459,6 @@ export default function LoginPage() {
         .div-line { flex: 1; height: 1px; background: rgba(79,195,247,0.12); }
         .div-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(79,195,247,0.25); white-space: nowrap; }
 
-        /* ====== ERROR ====== */
         .sys-error {
           display: flex; align-items: center; gap: 10px;
           padding: 10px 14px;
@@ -464,7 +469,6 @@ export default function LoginPage() {
           position: relative; z-index: 1;
         }
 
-        /* ====== FOOTER ====== */
         .sys-footer {
           text-align: center;
           margin-top: 22px;
@@ -482,7 +486,6 @@ export default function LoginPage() {
         }
         .sys-link:hover { color: #e0f7fa; text-shadow: 0 0 10px rgba(79,195,247,0.7); }
 
-        /* ====== ACCESS GRANTED OVERLAY ====== */
         .access-overlay {
           position: fixed; inset: 0;
           background: rgba(2,8,17,0.97);
