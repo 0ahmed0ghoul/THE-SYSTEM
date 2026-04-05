@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS projects (
     INDEX idx_user_id (user_id)
 );
 
+ALTER TABLE projects 
+ADD COLUMN team_members JSON DEFAULT NULL,
+ADD COLUMN tags JSON DEFAULT NULL,
+ADD COLUMN goals JSON DEFAULT NULL;
+ALTER TABLE projects 
+ADD INDEX idx_visibility (visibility),
+ADD INDEX idx_project_lead (project_lead);
+
 CREATE TABLE IF NOT EXISTS tasks (
     id INT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,

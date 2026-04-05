@@ -1,11 +1,12 @@
-// frontend/src/features/projects/components/CreateProjectModal.tsx
+// frontend/src/pages/CreateProjectPage.tsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
-  X, Calendar, Users, Tag, Flag, Layers,
-  Plus, User, Target, 
-  ChevronRight, ChevronLeft, CheckCircle
+  X, Calendar, Users, Tag, Flag, Layers, Clock, AlertCircle, 
+  Plus, User, Target, Briefcase, DollarSign, Eye, Shield,
+  ChevronRight, ChevronLeft, CheckCircle, ArrowLeft
 } from "lucide-react";
-import { useProjectStore } from "../../../store/projectStore";
+import { useProjectStore } from "../store/projectStore";
 
 type Step = {
   id: string;
@@ -23,7 +24,8 @@ const steps: Step[] = [
   { id: "progress", title: "STABILITY METRICS", subtitle: "Initial status & progress", icon: Flag },
 ];
 
-export default function CreateProjectModal({ onClose }: { onClose: () => void }) {
+export default function CreateProjectPage() {
+  const navigate = useNavigate();
   const addProject = useProjectStore((state) => state.addProject);
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -70,12 +72,14 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+      window.scrollTo(0, 0);
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      window.scrollTo(0, 0);
     }
   };
 
@@ -97,7 +101,7 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
     });
     
     setLoading(false);
-    onClose();
+    navigate('/projects');
   };
 
   const isStepValid = () => {
@@ -468,7 +472,7 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
                 </span>
                 <span className="text-[9px] tracking-[1px] text-[rgba(79,195,247,0.3)]">100%</span>
               </div>
-              <div className="mt-3 h-0.5 bg-[rgba(79,195,247,0.08)] overflow-hidden">
+              <div className="mt-3 h-[2px] bg-[rgba(79,195,247,0.08)] overflow-hidden">
                 <div 
                   className="h-full transition-all duration-300"
                   style={{ 
@@ -510,41 +514,135 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
   const isValid = isStepValid();
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" onClick={onClose} />
+    <div className="min-h-screen" >
+      <style>{`
+        :root {
+          --sys-blue: #4fc3f7;
+          --sys-gold: #ffd54f;
+          --sys-green: #4fe6a0;
+          --sys-red: #ff6b6b;
+          --sys-amber: #ffb347;
+          --sys-panel: rgba(4,18,38,0.98);
+          --sys-border: rgba(79,195,247,0.18);
+          --sys-bg: #0a0e27;
+        }
 
-        <div className="relative bg-[rgba(4,18,38,0.98)] border border-[rgba(79,195,247,0.3)] w-full max-w-2xl shadow-2xl animate-[fade-in-up_0.3s_ease]">
-          {/* Modal corner accents */}
-          <div className="absolute top-2 left-2 w-4 h-4 border-t border-l border-[rgba(79,195,247,0.3)]" />
-          <div className="absolute top-2 right-2 w-4 h-4 border-t border-r border-[rgba(79,195,247,0.3)]" />
-          <div className="absolute bottom-2 right-2 w-4 h-4 border-b border-r border-[rgba(79,195,247,0.3)]" />
-          <div className="absolute bottom-2 left-2 w-4 h-4 border-b border-l border-[rgba(79,195,247,0.3)]" />
+        .sys-create-page {
+          position: relative;
+          min-height: 100vh;
+        }
 
+        .sys-create-page::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: 
+            repeating-linear-gradient(transparent, transparent 2px, rgba(79,195,247,0.02) 2px, rgba(79,195,247,0.02) 4px);
+          pointer-events: none;
+        }
+
+        .sys-orb {
+          position: fixed;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: 0.15;
+          pointer-events: none;
+        }
+
+        .sys-orb-1 {
+          top: -200px;
+          right: -200px;
+          width: 500px;
+          height: 500px;
+          background: radial-gradient(circle, var(--sys-blue), transparent);
+        }
+
+        .sys-orb-2 {
+          bottom: -200px;
+          left: -200px;
+          width: 500px;
+          height: 500px;
+          background: radial-gradient(circle, var(--sys-gold), transparent);
+        }
+
+        .sys-scanlines {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: repeating-linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0) 0px,
+            rgba(0, 0, 0, 0) 2px,
+            rgba(0, 0, 0, 0.1) 2px,
+            rgba(0, 0, 0, 0.1) 4px
+          );
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .sys-create-container {
+          position: relative;
+          z-index: 2;
+        }
+
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes pulse-glow {
+          0%, 100% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+      `}</style>
+
+      <div className="sys-create-page">
+        <div className="sys-orb sys-orb-1" />
+        <div className="sys-orb sys-orb-2" />
+        <div className="sys-scanlines" />
+
+        <div className="sys-create-container max-w-4xl mx-auto px-4 py-8">
           {/* Header */}
-          <div className="sticky top-0 bg-[rgba(4,18,38,0.98)] border-b border-[rgba(79,195,247,0.15)] px-6 py-4 z-10 backdrop-blur-sm">
-            <div className="flex justify-between items-start">
+          <div className="mb-8" style={{ animation: "fade-in-up 0.4s ease both" }}>
+            <button
+              onClick={() => navigate('/projects')}
+              className="flex items-center gap-2 text-[rgba(79,195,247,0.5)] hover:text-[#4fc3f7] transition-colors mb-4"
+            >
+              <ArrowLeft size={16} />
+              <span className="text-[10px] tracking-[2px] uppercase">Back to Gates</span>
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-[#4fc3f7] shadow-[0_0_6px_#4fc3f7]" />
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="w-1 h-6 bg-[#4fc3f7] shadow-[0_0_6px_#4fc3f7]" />
-                  <h2 className="font-['Cinzel',serif] text-xl font-bold tracking-[2px] bg-linear-to-r from-[#e0f7fa] to-[#4fc3f7] bg-clip-text text-transparent">
-                    REGISTER NEW GATE
-                  </h2>
-                </div>
-                <p className="text-[10px] tracking-[2px] text-[rgba(79,195,247,0.4)] ml-4">
-                  STEP {currentStep + 1} OF {steps.length}
+                <h1 className="font-['Cinzel',serif] text-2xl font-bold tracking-[3px] bg-gradient-to-r from-[#e0f7fa] to-[#4fc3f7] bg-clip-text text-transparent">
+                  REGISTER NEW GATE
+                </h1>
+                <p className="text-[11px] tracking-[2px] text-[rgba(79,195,247,0.4)] mt-1">
+                  STEP {currentStep + 1} OF {steps.length} · {currentStepData.title}
                 </p>
               </div>
-              <button 
-                onClick={onClose} 
-                className="p-2 hover:bg-[rgba(79,195,247,0.1)] transition-colors rounded-sm"
-              >
-                <X className="w-5 h-5 text-[rgba(79,195,247,0.5)]" />
-              </button>
             </div>
+          </div>
 
-            {/* Progress Steps */}
-            <div className="mt-4 flex items-center gap-2">
+          {/* Progress Steps */}
+          <div className="mb-6 bg-[rgba(4,18,38,0.6)] border border-[rgba(79,195,247,0.1)] p-4" style={{ animation: "fade-in-up 0.4s 0.06s ease both" }}>
+            <div className="flex items-center gap-2">
               {steps.map((step, idx) => {
                 const isCompleted = idx < currentStep;
                 const isCurrent = idx === currentStep;
@@ -554,18 +652,16 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
                   <div key={step.id} className="flex items-center flex-1">
                     <button
                       onClick={() => setCurrentStep(idx)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-sm transition-all ${
-                        isCurrent ? 'bg-[rgba(79,195,247,0.1)] border border-[rgba(79,195,247,0.3)]' : ''
+                      className={`flex items-center gap-2 px-3 py-2 transition-all ${
+                        isCurrent ? 'text-[#4fc3f7]' : 'text-[rgba(79,195,247,0.4)] hover:text-[rgba(79,195,247,0.7)]'
                       }`}
                     >
                       {isCompleted ? (
                         <CheckCircle size={14} className="text-emerald-400" />
                       ) : (
-                        <StepIcon size={14} className={isCurrent ? 'text-[#4fc3f7]' : 'text-[rgba(79,195,247,0.3)]'} />
+                        <StepIcon size={14} />
                       )}
-                      <span className={`text-[8px] font-semibold tracking-[1px] uppercase hidden sm:inline ${
-                        isCurrent ? 'text-[#4fc3f7]' : 'text-[rgba(79,195,247,0.3)]'
-                      }`}>
+                      <span className="text-[9px] font-semibold tracking-[1px] uppercase hidden lg:inline">
                         {step.title.split(' ')[0]}
                       </span>
                     </button>
@@ -578,77 +674,75 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
             </div>
           </div>
 
-          {/* Step Header */}
-          <div className="px-6 pt-6 pb-2 border-b border-[rgba(79,195,247,0.1)]">
-            <div className="flex items-center gap-3 mb-1">
-              <CurrentIcon size={20} className="text-[#4fc3f7]" />
-              <h3 className="font-['Cinzel',serif] text-lg font-bold tracking-[2px] text-[#e0f7fa]">
-                {currentStepData.title}
-              </h3>
+          {/* Main Form Card */}
+          <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.3)] shadow-2xl" style={{ animation: "fade-in-up 0.4s 0.12s ease both" }}>
+            {/* Card Header */}
+            <div className="border-b border-[rgba(79,195,247,0.15)] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-6 bg-[#4fc3f7] shadow-[0_0_6px_#4fc3f7]" />
+                <CurrentIcon size={18} className="text-[#4fc3f7]" />
+                <h2 className="font-['Cinzel',serif] text-lg font-bold tracking-[2px] text-[#e0f7fa]">
+                  {currentStepData.title}
+                </h2>
+              </div>
+              <p className="text-[10px] tracking-[1px] text-[rgba(79,195,247,0.4)] ml-9 mt-1">
+                {currentStepData.subtitle}
+              </p>
             </div>
-            <p className="text-[11px] tracking-[1px] text-[rgba(79,195,247,0.4)] ml-11">
-              {currentStepData.subtitle}
-            </p>
+
+            {/* Form Content */}
+            <div className="px-6 py-8 min-h-[450px]">
+              {renderStepContent()}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="border-t border-[rgba(79,195,247,0.15)] px-6 py-4 flex gap-3">
+              <button
+                onClick={() => navigate('/projects')}
+                className="flex-1 px-4 py-2.5 border border-[rgba(79,195,247,0.2)] text-[10px] font-semibold tracking-[2px] uppercase text-[rgba(79,195,247,0.5)] hover:border-[rgba(79,195,247,0.5)] transition-all"
+              >
+                Cancel Registration
+              </button>
+              
+              {currentStep > 0 && (
+                <button
+                  onClick={handlePrevious}
+                  className="px-6 py-2.5 border border-[rgba(79,195,247,0.3)] text-[10px] font-semibold tracking-[2px] uppercase text-[rgba(79,195,247,0.7)] hover:border-[#4fc3f7] transition-all flex items-center gap-2"
+                >
+                  <ChevronLeft size={12} />
+                  Previous
+                </button>
+              )}
+              
+              {!isLastStep ? (
+                <button
+                  onClick={handleNext}
+                  disabled={!isValid}
+                  className="flex-1 px-4 py-2.5 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  Next Step
+                  <ChevronRight size={12} />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading || !form.name || !form.dueDate}
+                  className="flex-1 px-4 py-2.5 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {loading ? "REGISTERING..." : "REGISTER GATE"}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Form Content */}
-          <div className="px-6 py-6 h-0.5">
-            {renderStepContent()}
-          </div>
-
-          {/* Footer Buttons */}
-          <div className="border-t border-[rgba(79,195,247,0.15)] px-6 py-4 flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-[rgba(79,195,247,0.2)] text-[10px] font-semibold tracking-[2px] uppercase text-[rgba(79,195,247,0.5)] hover:border-[rgba(79,195,247,0.5)] transition-all"
-            >
-              Cancel
-            </button>
-            
-            {currentStep > 0 && (
-              <button
-                onClick={handlePrevious}
-                className="px-6 py-2.5 border border-[rgba(79,195,247,0.3)] text-[10px] font-semibold tracking-[2px] uppercase text-[rgba(79,195,247,0.7)] hover:border-[#4fc3f7] transition-all flex items-center gap-2"
-              >
-                <ChevronLeft size={12} />
-                Previous
-              </button>
-            )}
-            
-            {!isLastStep ? (
-              <button
-                onClick={handleNext}
-                disabled={!isValid}
-                className="flex-1 px-4 py-2.5 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                Next
-                <ChevronRight size={12} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !form.name || !form.dueDate}
-                className="flex-1 px-4 py-2.5 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {loading ? "REGISTERING..." : "REGISTER GATE"}
-              </button>
-            )}
+          {/* Bottom Status Bar */}
+          <div className="mt-6 flex justify-between items-center text-[9px] tracking-[2px] text-[rgba(79,195,247,0.3)] border-t border-[rgba(79,195,247,0.1)] pt-4">
+            <span>System v4.2.1 · Gate Registration Protocol</span>
+            <span style={{ color: "rgba(79,230,160,0.5)" }}>⬡ All fields classified</span>
+            <span>Required fields marked with *</span>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

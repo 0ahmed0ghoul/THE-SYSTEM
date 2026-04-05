@@ -18,6 +18,7 @@ import ProfilePage from "../pages/ProfilePage";
 import ProjectBoard from "../features/projects/ProjectBoard";
 import TaskDetailPage from "../features/tasks/TaskDetailPage";
 import TasksPage from "../features/tasks/TasksPage";
+import CreateProjectPage from "../pages/CreateProjectPage";
 
 export const router = createBrowserRouter([
   {
@@ -56,6 +57,10 @@ export const router = createBrowserRouter([
       {
         path: "/projects/:id",  
         element: <ProjectDetailPage />,
+      },
+      {
+        path: "/projects/add",  
+        element: <CreateProjectPage />,
       },
       {
         path: "/tasks",  

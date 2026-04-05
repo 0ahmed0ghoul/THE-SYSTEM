@@ -11,7 +11,6 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
-import CreateProjectModal from "../features/projects/components/CreateProjectModal";
 import { dashboardApi } from "../api/dashboard.api";
 import type { 
   ProjectSummary, 
@@ -177,7 +176,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<ViewType>("projects");
   const [activeTab, setActiveTab] = useState("all");
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   
   // State for API data
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -265,6 +263,11 @@ export default function Dashboard() {
   ];
 
   const displayActivityLog = activityLog.length > 0 ? activityLog : defaultActivityLog;
+
+  // Navigation handlers
+  const handleOpenGate = () => {
+    navigate('/projects/add');
+  };
 
   // Loading state
   if (loading) {
@@ -418,7 +421,11 @@ export default function Dashboard() {
                     {activeView === "projects" ? `${recentProjects.length} OPEN` : `${upcomingTasksData.length} ACTIVE`}
                   </span>
                 </div>
-                <button className="sys-new-btn" onClick={() => setIsProjectModalOpen(true)}>
+                <button 
+                  className="sys-new-btn" 
+                  onClick={handleOpenGate}
+                  type="button"
+                >
                   <Plus size={12} />
                   {activeView === "projects" ? "OPEN GATE" : "ADD QUEST"}
                 </button>
@@ -544,7 +551,8 @@ export default function Dashboard() {
                         <div className="sys-empty-txt">No gates found</div>
                         <button
                           className="sys-empty-link"
-                          onClick={() => setIsProjectModalOpen(true)}
+                          onClick={handleOpenGate}
+                          type="button"
                         >
                           Open first gate →
                         </button>
@@ -552,7 +560,11 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <button className="sys-add-gate" onClick={() => setIsProjectModalOpen(true)}>
+                  <button 
+                    className="sys-add-gate" 
+                    onClick={handleOpenGate}
+                    type="button"
+                  >
                     ⊕ REGISTER NEW GATE
                   </button>
                   {recentProjects.length > 0 && (
@@ -745,12 +757,6 @@ export default function Dashboard() {
 
         </div>
       </div>
-
-      {isProjectModalOpen && (
-        <CreateProjectModal
-          onClose={() => setIsProjectModalOpen(false)}
-        />
-      )}
     </>
   );
 }

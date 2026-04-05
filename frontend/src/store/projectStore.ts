@@ -1,6 +1,7 @@
 // frontend/src/features/projects/store/projectStore.ts
 import { create } from "zustand";
 import { useAuthStore } from "./authStore";
+import axios from "axios";
 
 export const statsData = {
   totalProjects: 10,
@@ -59,35 +60,29 @@ interface ProjectStore {
 export const useProjectStore = create<ProjectStore>((set, get) => ({
   projects: [],
   
-  addProject: (projectData) => {
-    const user = useAuthStore.getState().user;
-    if (!user) return;
-    
-    const newProject: Project = { 
-      id: Date.now(),
-      name: projectData.name,
-      description: projectData.description || "",
-      startDate: projectData.startDate,
-      dueDate: projectData.dueDate,
-      priority: projectData.priority || "medium",
-      status: projectData.status || "planning",
-      category: projectData.category,
-      progress: projectData.progress || 0,
-      estimatedHours: projectData.estimatedHours,
-      budget: projectData.budget,
-      projectLead: projectData.projectLead,
-      clientName: projectData.clientName,
-      teamMembers: projectData.teamMembers || [],
-      tags: projectData.tags || [],
-      goals: projectData.goals || [],
-      visibility: projectData.visibility || "private",
-      requiresApproval: projectData.requiresApproval || false,
-      ownerId: user.id!,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    set((state) => ({ projects: [...state.projects, newProject] }));
+  addProject: async (projectData) => {
+    try {
+      // Only send essential fields for now
+      const response = await axios.post('/api/projects', {
+        name: projectData.name,
+        description: projectData.description,
+        startDate: projectData.startDate,
+        dueDate: projectData.dueDate,
+        priority: projectData.priority,
+        status: projectData.status,
+        progress: projectData.progress,
+        visibility: projectData.visibility,
+        requiresApproval: projectData.requiresApproval,
+        // Other fields (category, projectLead, teamMembers, estimatedHours, 
+        // clientName, budget, tags, goals) will be added later in a separate update
+      });
+      
+      set((state) => ({
+        projects: [...state.projects, response.data],
+      }));
+    } catch (error) {
+      console.error('Failed to create project:', error);
+    }
   },
   
   removeProject: (id: number) => {

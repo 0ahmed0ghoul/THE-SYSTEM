@@ -1,3 +1,4 @@
+// backend/src/handlers/projectHandler.ts
 import type { Request, Response } from "express";
 import {
   createProject,
@@ -20,6 +21,13 @@ export async function createProjectHandler(req: Request, res: Response) {
   const project = await createProject({
     name: payload.name,
     description: payload.description,
+    startDate: payload.startDate,
+    dueDate: payload.dueDate,
+    priority: payload.priority,
+    status: payload.status,
+    progress: payload.progress,
+    visibility: payload.visibility,
+    requiresApproval: payload.requiresApproval,
     userId,
   });
 
