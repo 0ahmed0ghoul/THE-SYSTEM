@@ -413,7 +413,6 @@
   .sys-topbar-meta { display: none; }
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 :root {
   --sys-blue:  #4fc3f7;

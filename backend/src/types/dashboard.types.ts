@@ -297,7 +297,7 @@ export interface PriorityDistributionFilters {
    * Get dashboard options
    */
   export interface GetDashboardOptions {
-    userId?: number;
+    userId?: number  ;
     timeframe?: string;
     limit?: number;
     status?: string;

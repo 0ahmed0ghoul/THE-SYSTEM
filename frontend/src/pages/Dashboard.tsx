@@ -18,6 +18,10 @@ import type {
   ActivityItem, 
   DashboardStats 
 } from "../types/dashboard";
+import TaskModal from "../features/board/components/TaskModal";
+import type { Task } from "../store/taskStore";
+import { taskApi } from "../api/tAsk.api";
+
 
 type ViewType = "projects" | "tasks";
 
@@ -184,35 +188,54 @@ export default function Dashboard() {
   const [activityData, setActivityData] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Task modal state
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [projectsForModal, setProjectsForModal] = useState<{ id: number; name: string }[]>([]);
 
   // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const dashboardData = await dashboardApi.getDashboardData('week', 8);
+      console.log('Full API response:', dashboardData);
+      console.log('Upcoming tasks:', dashboardData.upcomingTasks);
+      
+      setStats(dashboardData.stats);
+      setProjectsData(dashboardData.recentProjects);
+      setUpcomingTasksData(dashboardData.upcomingTasks);
+      setActivityData(dashboardData.recentActivity);
+      
+      // Prepare project list for task modal
+      setProjectsForModal(
+        dashboardData.recentProjects.map(p => ({ id: p.id, name: p.name }))
+      );
+      
+    } catch (err: any) {
+      console.error('Failed to fetch dashboard data:', err);
+      setError(err.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch all data in parallel
-        const [statsData, projects, tasks, activities] = await Promise.all([
-          dashboardApi.getStats(),
-          dashboardApi.getRecentProjects(100, 'all'),
-          dashboardApi.getUpcomingTasks(8),
-          dashboardApi.getActivityFeed(10)
-        ]);
-        
-        setStats(statsData);
-        setProjectsData(projects);
-        setUpcomingTasksData(tasks);
-        setActivityData(activities);
-      } catch (err: any) {
-        console.error('Failed to fetch dashboard data:', err);
-        setError(err.message || 'Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchDashboardData();
   }, []);
+
+  // Handle task creation
+  const handleCreateTask = async (taskData: Partial<Task>): Promise<boolean> => {
+    try {
+      await taskApi.create(taskData);
+      // Refresh dashboard data to show new task
+      await fetchDashboardData();
+      return true; // allow modal to close
+    } catch (err) {
+      console.error('Failed to create task:', err);
+      return false; // prevent modal from closing
+    }
+  };
 
   // Filter projects based on active tab
   const recentProjects = projectsData
@@ -266,7 +289,11 @@ export default function Dashboard() {
 
   // Navigation handlers
   const handleOpenGate = () => {
-    navigate('/projects/add');
+    if (activeView === "projects") {
+      navigate("/projects/add");
+    } else if (activeView === "tasks") {
+      setShowTaskModal(true);
+    }
   };
 
   // Loading state
@@ -385,7 +412,6 @@ export default function Dashboard() {
             <div className="sys-panel" style={{ animation: "fade-in-up .4s .22s ease both" }}>
               <div className="sys-panel-head">
                 <div className="sys-panel-head-left">
-                  {/* Toggle inside panel head */}
                   <div
                     className="sys-panel-badge"
                     style={
@@ -480,7 +506,6 @@ export default function Dashboard() {
                               <div className="prc-bl" />
                             </div>
 
-                            {/* Rank box */}
                             <div className={`sys-rank-box ${rs.badge}`}>{rank}</div>
 
                             <div className="flex-1 min-w-0">
@@ -524,7 +549,6 @@ export default function Dashboard() {
                                 </button>
                               </div>
 
-                              {/* Progress bar */}
                               <div className="mt-3">
                                 <div className="sys-pr-prog-label">
                                   <span>PROGRESS</span>
@@ -757,6 +781,14 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        onSave={handleCreateTask}
+        projects={projectsForModal}
+      />
     </>
   );
 }

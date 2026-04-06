@@ -33,8 +33,8 @@ export interface Task {
   id: number;
   title: string;
   description?: string;
-  status: TaskStatus;  // ✅ Use TaskStatus type
-  priority: TaskPriority;  // ✅ Use TaskPriority type
+  status: TaskStatus; 
+  priority: TaskPriority;  
   projectId: number;
   projectName?: string;
   assignee?: {
@@ -49,6 +49,7 @@ export interface Task {
   comments?: Comment[];
   createdAt: string;
   updatedAt: string;
+  estimatedHours?: number;
 }
 
 // ✅ Helper function to get status display text

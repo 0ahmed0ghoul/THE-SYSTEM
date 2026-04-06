@@ -83,26 +83,32 @@ export class DashboardController {
     }
   }
 
+  
   static async getUpcomingTasks(req: Request, res: Response): Promise<Response> {
-    try {
-      const userId = (req as any).user?.id;
-      const limit = parseInt(req.query.limit as string) || 8;
-
-      const tasks = await DashboardService.getUpcomingTasks(userId, limit);
-
-      return res.status(200).json({
-        success: true,
-        data: tasks
-      });
-
-    } catch (error) {
-      console.error('Upcoming tasks fetch error:', error);
-      return res.status(500).json({
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: 'Failed to fetch upcoming tasks'
+        message: 'User not authenticated'
       });
     }
+
+    const limit = parseInt(req.query.limit as string) || 8;
+    const tasks = await DashboardService.getUpcomingTasks(userId, limit);
+
+    return res.status(200).json({
+      success: true,
+      data: tasks
+    });
+  } catch (error) {
+    console.error('Upcoming tasks fetch error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch upcoming tasks'
+    });
   }
+}
 
 
   static async getActivityFeed(req: Request, res: Response): Promise<Response> {
