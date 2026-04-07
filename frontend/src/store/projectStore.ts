@@ -36,6 +36,20 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface ProjectStats {
+  total: number;
+  active: number;
+  planning: number;
+  completed: number;
+  onHold: number;
+  archived: number;
+  urgent: number;
+  high: number;
+  medium: number;
+  low: number;
+  avg_progress: number;
+}
+
 interface ProjectStore {
   projects: Project[];
   addProject: (projectData: Omit<Project, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => void;

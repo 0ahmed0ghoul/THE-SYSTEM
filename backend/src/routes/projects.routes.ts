@@ -1,20 +1,44 @@
 import { Router } from "express";
-import {
-  createProjectHandler,
-  deleteProjectHandler,
-  getProjectByIdHandler,
-  getProjectsHandler,
-  updateProjectHandler,
-} from "../controllers/projects.controller.js";
+import { ProjectsController } from "../controllers/projects.controller.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const projectsRouter = Router();
 
+// Create controller instance
+const projectsController = new ProjectsController();
+
+// Protect all routes
 projectsRouter.use(authMiddleware);
 
-projectsRouter.get("/", asyncHandler(getProjectsHandler));
-projectsRouter.post("/", asyncHandler(createProjectHandler));
-projectsRouter.get("/:id", asyncHandler(getProjectByIdHandler));
-projectsRouter.patch("/:id", asyncHandler(updateProjectHandler));
-projectsRouter.delete("/:id", asyncHandler(deleteProjectHandler));
+// Routes
+projectsRouter.get(
+  "/",
+  asyncHandler(projectsController.getAllProjects)
+);
+
+projectsRouter.post(
+  "/",
+  asyncHandler(projectsController.createProject)
+);
+
+projectsRouter.get(
+  "/:id",
+  asyncHandler(projectsController.getProjectById)
+);
+
+projectsRouter.patch(
+  "/:id",
+  asyncHandler(projectsController.updateProject)
+);
+
+projectsRouter.delete(
+  "/:id",
+  asyncHandler(projectsController.deleteProject)
+);
+
+// Optional: stats route
+projectsRouter.get(
+  "/stats/overview",
+  asyncHandler(projectsController.getProjectStats)
+);

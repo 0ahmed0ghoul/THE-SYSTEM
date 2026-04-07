@@ -20,7 +20,7 @@ import type {
 } from "../types/dashboard";
 import TaskModal from "../features/board/components/TaskModal";
 import type { Task } from "../store/taskStore";
-import { taskApi } from "../api/tAsk.api";
+import { taskApi } from "../api/task.api";
 
 
 type ViewType = "projects" | "tasks";
@@ -337,33 +337,9 @@ export default function Dashboard() {
 
         <div className="sys-content">
 
-          {/* ── TOPBAR ──────────────────────────────────────────── */}
-          <div className="sys-topbar" style={{ animation: "fade-in-up .4s ease both" }}>
-            <div className="sys-logo">
-              <div className="sys-logo-icon">S</div>
-              <span className="sys-logo-name">THE SYSTEM</span>
-            </div>
-            <div className="sys-topbar-meta">
-              <span className="sys-tb-item">
-                <span className="sys-online-dot" />
-                Command Active
-              </span>
-              <span className="sys-tb-item">
-                Gates: {dashboardStats.activeProjects + dashboardStats.planningProjects} Open
-              </span>
-              <span className="sys-tb-item">
-                Quests: {upcomingTasksData.length} Active
-              </span>
-              <div className="sys-rank-badge">S-RANK HUNTER</div>
-            </div>
-          </div>
 
-          {/* ── PAGE HEADER ─────────────────────────────────────── */}
-          <div className="sys-page-head" style={{ animation: "fade-in-up .4s .06s ease both" }}>
-            <div className="sys-page-title">COMMAND CENTER</div>
-            <div className="sys-page-sub">Hunter Operations Dashboard · All systems operational</div>
-            <div className="sys-page-divider" />
-          </div>
+
+
 
           {/* ── STAT CARDS ──────────────────────────────────────── */}
           <div className="sys-stats-grid">

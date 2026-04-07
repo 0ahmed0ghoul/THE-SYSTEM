@@ -5,6 +5,27 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS tasks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status ENUM('todo', 'inprogress', 'review', 'done') DEFAULT 'todo',
+    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
+    due_date DATE,
+    project_id INT,
+    assigned_to JSON,
+    estimated_hours INT,
+    actual_hours INT,
+    user_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_project_id (project_id),
+    INDEX idx_due_date (due_date),
+    INDEX idx_user_id (user_id)
+);
+
 
 CREATE TABLE IF NOT EXISTS projects (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -39,26 +60,7 @@ ALTER TABLE projects
 ADD INDEX idx_visibility (visibility),
 ADD INDEX idx_project_lead (project_lead);
 
-CREATE TABLE IF NOT EXISTS tasks (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    status ENUM('todo', 'inprogress', 'review', 'done') DEFAULT 'todo',
-    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
-    due_date DATE,
-    project_id INT,
-    assigned_to JSON,
-    estimated_hours INT,
-    actual_hours INT,
-    user_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
-    INDEX idx_status (status),
-    INDEX idx_project_id (project_id),
-    INDEX idx_due_date (due_date),
-    INDEX idx_user_id (user_id)
-);
+
 
 CREATE TABLE IF NOT EXISTS project_team_members (
     id INT PRIMARY KEY AUTO_INCREMENT,

@@ -11,9 +11,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { useState, useMemo, useCallback } from "react";
-import { Plus, Filter, X } from "lucide-react";
-
-
+import { Plus, Filter, X, Calendar, AlertTriangle, Users, Clock } from "lucide-react";
 
 import Column from "./components/Column";
 import TaskCard from "./components/TaskCard";
@@ -26,14 +24,33 @@ type ColumnType = {
   id: TaskStatus;
   title: string;
   icon: string;
-  color: string;
+  badgeColor: string;
 };
 
 const COLUMNS: ColumnType[] = [
-  { id: "todo", title: "To Do", icon: "📋", color: "bg-gray-100 dark:bg-gray-800" },
-  { id: "inprogress", title: "In Progress", icon: "🔄", color: "bg-blue-100 dark:bg-blue-950/30" },
-  { id: "done", title: "Done", icon: "✅", color: "bg-emerald-100 dark:bg-emerald-950/30" },
+  { id: "todo", title: "STANDBY", icon: "◈", badgeColor: "rgba(79,195,247,0.3)" },
+  { id: "inprogress", title: "IN PROGRESS", icon: "⟳", badgeColor: "rgba(255,213,79,0.3)" },
+  { id: "done", title: "CLEARED", icon: "✓", badgeColor: "rgba(79,195,247,0.15)" },
 ];
+
+// Priority rank helper
+function getTaskRank(priority: string): "S" | "A" | "B" | "C" | "D" {
+  return (
+    ({ urgent: "S", high: "A", medium: "B", low: "C" } as Record<string, any>)[
+      priority
+    ] ?? "D"
+  );
+}
+
+function getRankStyle(rank: string) {
+  return {
+    S: "text-red-400 border-red-500/40 bg-red-500/5",
+    A: "text-amber-400 border-amber-500/40 bg-amber-500/5",
+    B: "text-sky-300 border-sky-400/40 bg-sky-400/5",
+    C: "text-emerald-400 border-emerald-500/40 bg-emerald-500/5",
+    D: "text-sky-500/50 border-sky-500/20 bg-transparent",
+  }[rank] ?? "text-sky-500/50 border-sky-500/20";
+}
 
 export default function BoardPage({ projectId }: { projectId?: number }) {
   const { tasks, updateTask, addTask } = useTaskStore();
@@ -74,7 +91,7 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
     return projectTasks;
   }, [projectTasks, filterBy]);
 
-  // Group tasks by status
+  // Group tasks by status (including review)
   const tasksByStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {
       todo: [],
@@ -119,7 +136,6 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
 
       if (!task || task.status === newStatus) return;
 
-      // Update task status
       updateTask(taskId, { status: newStatus });
     },
     [projectTasks, updateTask]
@@ -133,9 +149,9 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
 
   // Save new task
   const handleSaveTask = useCallback(
-    (taskData: Partial<Task>) => {
-      if (!taskData.title) return;
-      
+    async (taskData: Partial<Task>): Promise<boolean> => {
+      if (!taskData.title) return false;
+  
       const newTask: Omit<Task, "id" | "createdAt" | "updatedAt"> = {
         title: taskData.title,
         description: taskData.description || "",
@@ -150,9 +166,15 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
         attachments: [],
         comments: [],
       };
-      
-      addTask(newTask);
-      setIsAddingTask(false);
+  
+      try {
+        await addTask(newTask); // in case it's async
+        setIsAddingTask(false);
+        return true; // ✅ success
+      } catch (error) {
+        console.error(error);
+        return false; // ❌ failure
+      }
     },
     [addTask, projectId, selectedStatus]
   );
@@ -179,16 +201,23 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
     setFilterBy("all");
   };
 
+  const getFilterLabel = () => {
+    if (filterBy === "assigned") return "ASSIGNED TO ME";
+    if (filterBy === "due") return "DUE TODAY";
+    if (filterBy === "highPriority") return "HIGH PRIORITY";
+    return "ALL QUESTS";
+  };
+
   return (
-    <div className="h-full flex flex-col p-4">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Project Board
+          <h2 className="text-lg font-bold text-[#e0f7fa] font-[Cinzel,serif] tracking-wider">
+            QUEST BOARD
           </h2>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">
-            Drag and drop tasks to update their status
+          <p className="text-[10px] tracking-[1px] text-[rgba(79,195,247,0.45)] mt-1">
+            DRAG & DROP TO UPDATE QUEST STATUS
           </p>
         </div>
 
@@ -197,12 +226,12 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
           <div className="relative">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[rgba(4,18,38,0.6)] border border-[rgba(79,195,247,0.2)] rounded-lg hover:border-[rgba(79,195,247,0.4)] transition-all text-xs font-semibold tracking-wider text-[rgba(79,195,247,0.7)]"
             >
-              <Filter size={16} />
-              <span>Filters</span>
+              <Filter size={12} />
+              FILTER
               {filterBy !== "all" && (
-                <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                <span className="w-1.5 h-1.5 bg-[#4fc3f7] rounded-full shadow-[0_0_6px_#4fc3f7]"></span>
               )}
             </button>
 
@@ -210,7 +239,7 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
             {showFilters && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowFilters(false)} />
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 z-20">
+                <div className="absolute right-0 mt-2 w-56 bg-[rgba(4,18,38,0.98)] border border-[rgba(79,195,247,0.3)] rounded-lg shadow-2xl z-20 backdrop-blur-sm">
                   <div className="p-2">
                     {(["all", "assigned", "due", "highPriority"] as FilterType[]).map((type) => (
                       <button
@@ -219,16 +248,16 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
                           setFilterBy(type);
                           setShowFilters(false);
                         }}
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        className={`w-full text-left px-3 py-2 text-xs font-semibold tracking-wider rounded-md transition-all ${
                           filterBy === type
-                            ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400"
-                            : "text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                            ? "bg-[rgba(79,195,247,0.1)] text-[#4fc3f7] border-l-2 border-[#4fc3f7]"
+                            : "text-[rgba(79,195,247,0.5)] hover:bg-[rgba(79,195,247,0.05)] hover:text-[rgba(79,195,247,0.7)]"
                         }`}
                       >
-                        {type === "all" && "All Tasks"}
-                        {type === "assigned" && "Assigned to Me"}
-                        {type === "due" && "Due Today"}
-                        {type === "highPriority" && "High Priority"}
+                        {type === "all" && "ALL QUESTS"}
+                        {type === "assigned" && "ASSIGNED TO ME"}
+                        {type === "due" && "DUE TODAY"}
+                        {type === "highPriority" && "HIGH PRIORITY"}
                       </button>
                     ))}
                   </div>
@@ -240,10 +269,10 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
           {/* Add Task Button */}
           <button
             onClick={() => handleAddTask("todo")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] rounded-lg hover:bg-[rgba(79,195,247,0.2)] transition-all text-xs font-semibold tracking-wider text-[#4fc3f7]"
           >
-            <Plus size={18} />
-            <span className="hidden sm:inline">Add Task</span>
+            <Plus size={12} />
+            ADD QUEST
           </button>
         </div>
       </div>
@@ -251,50 +280,50 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
       {/* Active Filters Indicator */}
       {filterBy !== "all" && (
         <div className="mb-4 flex items-center gap-2">
-          <span className="text-sm text-gray-600 dark:text-slate-400">Active filter:</span>
-          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs flex items-center gap-1">
-            {filterBy === "assigned" && "Assigned to Me"}
-            {filterBy === "due" && "Due Today"}
-            {filterBy === "highPriority" && "High Priority"}
-            <button onClick={clearFilters} className="hover:bg-blue-200 dark:hover:bg-blue-900/50 rounded p-0.5">
-              <X size={12} />
+          <span className="text-[10px] tracking-[1px] text-[rgba(79,195,247,0.45)]">ACTIVE FILTER:</span>
+          <span className="px-2 py-1 bg-[rgba(79,195,247,0.1)] border border-[rgba(79,195,247,0.3)] text-[#4fc3f7] rounded text-[10px] font-semibold tracking-wider flex items-center gap-1">
+            {getFilterLabel()}
+            <button onClick={clearFilters} className="hover:bg-[rgba(79,195,247,0.2)] rounded p-0.5 transition-colors">
+              <X size={10} />
             </button>
           </span>
         </div>
       )}
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      {/* Stats Row - Cyberpunk Style */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
         {COLUMNS.map((col) => {
           const stats = getColumnStats(col.id);
 
           return (
             <div
               key={col.id}
-              className={`${col.color} rounded-xl p-4 border border-gray-200 dark:border-slate-800 transition-all hover:shadow-md`}
+              className="relative bg-[rgba(4,18,38,0.6)] border border-[rgba(79,195,247,0.15)] rounded-lg p-3 overflow-hidden hover:border-[rgba(79,195,247,0.3)] transition-all duration-300"
             >
-              <div className="flex justify-between items-center">
+              <div className="absolute top-0 left-0 w-1 h-full" style={{ background: col.badgeColor }} />
+              
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{col.icon}</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
+                  <span className="text-sm opacity-60">{col.icon}</span>
+                  <span className="text-[9px] font-bold tracking-[2px] text-[rgba(79,195,247,0.6)]">
                     {col.title}
                   </span>
                 </div>
-                <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                <span className="text-xl font-bold text-[#e0f7fa] font-[Cinzel,serif]">
                   {stats.total}
                 </span>
               </div>
 
               {(stats.highPriority > 0 || stats.overdue > 0) && (
-                <div className="flex gap-3 mt-3 text-xs">
+                <div className="flex gap-2 mt-2 pt-2 border-t border-[rgba(79,195,247,0.1)]">
                   {stats.highPriority > 0 && (
-                    <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
-                      🔥 {stats.highPriority} high priority
+                    <span className="text-[9px] text-red-400 flex items-center gap-1">
+                      <AlertTriangle size={8} /> {stats.highPriority} CRITICAL
                     </span>
                   )}
                   {stats.overdue > 0 && (
-                    <span className="text-orange-600 dark:text-orange-400 flex items-center gap-1">
-                      ⚠️ {stats.overdue} overdue
+                    <span className="text-[9px] text-amber-400 flex items-center gap-1">
+                      <Clock size={8} /> {stats.overdue} OVERDUE
                     </span>
                   )}
                 </div>
@@ -311,7 +340,7 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-6 overflow-x-auto pb-4 min-h-[500px]">
+        <div className="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
           {COLUMNS.map((col) => (
             <Column
               key={col.id}
@@ -324,8 +353,12 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
           ))}
         </div>
 
-        <DragOverlay>
-          {activeTask && <TaskCard task={activeTask} />}
+        <DragOverlay dropAnimation={null}>
+          {activeTask && (
+            <div className="transform rotate-3 scale-105">
+              <TaskCard task={activeTask} />
+            </div>
+          )}
         </DragOverlay>
       </DndContext>
 
@@ -336,6 +369,27 @@ export default function BoardPage({ projectId }: { projectId?: number }) {
         onSave={handleSaveTask}
         status={selectedStatus}
       />
+
+      <style>{`
+        /* Custom scrollbar for board columns */
+        .flex.overflow-x-auto::-webkit-scrollbar {
+          height: 4px;
+        }
+        
+        .flex.overflow-x-auto::-webkit-scrollbar-track {
+          background: rgba(79, 195, 247, 0.05);
+          border-radius: 4px;
+        }
+        
+        .flex.overflow-x-auto::-webkit-scrollbar-thumb {
+          background: rgba(79, 195, 247, 0.3);
+          border-radius: 4px;
+        }
+        
+        .flex.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+          background: rgba(79, 195, 247, 0.5);
+        }
+      `}</style>
     </div>
   );
 }

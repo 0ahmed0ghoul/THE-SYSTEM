@@ -10,9 +10,11 @@ import {
   Filter,
   ChevronDown
 } from "lucide-react";
-import { useProjectStore } from "../../store/projectStore";
+import type { Project } from "../../store/projectStore";
+import { projectsApi } from "../../api/projects.api";
 
-// Rank assignment helpers
+
+// Rank assignment helpers (same as before)
 function getProjectRank(priority: string = "medium"): "S" | "A" | "B" | "C" | "D" {
   return (
     ({ urgent: "S", high: "A", medium: "B", low: "C" } as Record<string, any>)[
@@ -74,30 +76,45 @@ function statusLabel(status: string = "planning") {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
-  const { projects, getUserProjects, getProjectStats, addProject } = useProjectStore();
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get user's projects
-  const userProjects = getUserProjects();
-  const stats = getProjectStats();
+  // Calculate stats from fetched projects
+  const stats = {
+    total: projects.length,
+    active: projects.filter(p => p.status === "active").length,
+    planning: projects.filter(p => p.status === "planning").length,
+    completed: projects.filter(p => p.status === "completed").length,
+    onHold: projects.filter(p => p.status === "onHold").length,
+    archived: projects.filter(p => p.status === "archived").length,
+  };
+
+  // Fetch projects from API
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await projectsApi.getAll(); // Adjust based on your API
+      setProjects(response);
+    } catch (err: any) {
+      console.error('Failed to fetch projects:', err);
+      setError(err.message || 'Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading or fetch projects if needed
-    const loadProjects = async () => {
-      setLoading(true);
-      // If your store has a fetchProjects method, call it here
-      // await fetchProjects();
-      setTimeout(() => setLoading(false), 500);
-    };
-    loadProjects();
+    fetchProjects();
   }, []);
 
   // Filter projects
-  const filteredProjects = userProjects.filter((project) => {
+  const filteredProjects = projects.filter((project) => {
     const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === "all" || project.status === statusFilter;
@@ -120,6 +137,23 @@ export default function ProjectsPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="sys-dashboard flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-400 mb-4 font-[Rajdhani] tracking-wider">Error loading gates</div>
+          <div className="text-[rgba(79,195,247,0.5)] text-sm">{error}</div>
+          <button 
+            onClick={() => fetchProjects()}
+            className="mt-4 px-4 py-2 border border-[rgba(79,195,247,0.3)] text-[#4fc3f7] text-sm hover:bg-[rgba(79,195,247,0.1)] transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="sys-dashboard">
       {/* Background Effects */}
@@ -127,39 +161,7 @@ export default function ProjectsPage() {
       <div className="sys-bg-orb1" />
       <div className="sys-bg-orb2" />
       <div className="sys-scanlines" />
-
       <div className="sys-content">
-        {/* Top Bar */}
-        <div className="sys-topbar" style={{ animation: "fade-in-up .4s ease both" }}>
-          <div className="sys-logo">
-            <div className="sys-logo-icon">S</div>
-            <span className="sys-logo-name">THE SYSTEM</span>
-          </div>
-          <div className="sys-topbar-meta">
-            <span className="sys-tb-item">
-              <span className="sys-online-dot" />
-              Gate Registry
-            </span>
-            <span className="sys-tb-item">
-              Total: {stats.total} Gates
-            </span>
-            <button
-              onClick={handleOpenGate}
-              className="sys-rank-badge hover:bg-[rgba(79,195,247,0.2)] transition-colors cursor-pointer"
-            >
-              <Plus size={12} className="inline mr-1" />
-              NEW GATE
-            </button>
-          </div>
-        </div>
-
-        {/* Page Header */}
-        <div className="sys-page-head" style={{ animation: "fade-in-up .4s .06s ease both" }}>
-          <div className="sys-page-title">GATE REGISTRY</div>
-          <div className="sys-page-sub">Manage and monitor all active gates</div>
-          <div className="sys-page-divider" />
-        </div>
-
         {/* Stats Cards */}
         <div className="sys-stats-grid" style={{ animation: "fade-in-up .4s .12s ease both" }}>
           <div className="relative bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.2)] p-5 overflow-hidden">
