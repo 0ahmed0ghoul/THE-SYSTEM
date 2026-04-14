@@ -1,6 +1,6 @@
 // frontend/src/features/profile/ProfilePage.tsx
-import { useState, useRef } from "react";
-import { useAuthStore } from "../store/authStore";
+import { useState, useRef, useEffect } from "react";
+import { useAuthStore } from "../features/auth/store/authStore";
 import {
   Mail,
   Phone,
@@ -30,7 +30,7 @@ import { useTheme } from "../context/ThemeContext";
 // ── Animated counter ─────────────────────────────────────────────────────────
 function useCountUp(target: number, duration = 900) {
   const [value, setValue] = useState(0);
-  useState(() => {
+  useEffect(() => {
     let start: number | null = null;
     let raf: number;
     const step = (ts: number) => {
@@ -41,29 +41,30 @@ function useCountUp(target: number, duration = 900) {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  });
+  }, [target, duration]);
   return value;
 }
 
 export default function ProfilePage() {
-  const { user } = useAuthStore();
+  const { user, updateProfile, updatePassword, updateAvatar, fetchUser } = useAuthStore();
   const { isDarkMode, toggleTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
-    name: user?.name || "Hunter Alex",
-    email: user?.email || "hunter.alex@system.io",
-    phone: user?.phone || "+1 (555) 847-2367",
-    location: user?.location || "Hunter's Guild, Sector 7",
-    position: user?.position || "S-Rank Hunter",
-    department: user?.department || "Special Operations",
-    rank: "S",
-    bio: user?.bio || "Elite S-Rank hunter specializing in high-level gate clearance. 127 successful missions completed. Currently leading the Vanguard Division in operations against A-Rank and above gates.",
-    website: user?.website || "https://hunter-guild.system.io",
-    github: user?.github || "https://github.com/hunteralex",
-    linkedin: user?.linkedin || "https://linkedin.com/in/hunteralex",
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    location: user?.location || "",
+    position: user?.position || "",
+    department: user?.department || "",
+    rank: user?.rank || "B",
+    bio: user?.bio || "",
+    website: user?.website || "",
+    github: user?.github || "",
+    linkedin: user?.linkedin || "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -73,11 +74,38 @@ export default function ProfilePage() {
   });
 
   const [avatar, setAvatar] = useState(
-    user?.avatar || `https://ui-avatars.com/api/?name=${formData.name.replace(" ", "+")}&background=4fc3f7&color=fff&bold=true&length=2`
+    user?.avatar || `https://ui-avatars.com/api/?name=${(formData.name || "User").replace(/ /g, "+")}&background=4fc3f7&color=fff&bold=true&length=2`
   );
 
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Fetch user data on mount
+  useEffect(() => {
+    if (!user) {
+      fetchUser();
+    }
+  }, [user, fetchUser]);
+
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        location: user.location || "",
+        position: user.position || "",
+        department: user.department || "",
+        rank: user.rank || "B",
+        bio: user.bio || "",
+        website: user.website || "",
+        github: user.github || "",
+        linkedin: user.linkedin || "",
+      });
+      setAvatar(user.avatar || `https://ui-avatars.com/api/?name=${(user.name || "User").replace(/ /g, "+")}&background=4fc3f7&color=fff&bold=true&length=2`);
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -86,24 +114,39 @@ export default function ProfilePage() {
     });
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    setSuccessMessage("Hunter profile updated successfully!");
-    setTimeout(() => setSuccessMessage(""), 3000);
-  };
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      await updateProfile(formData);
+      setIsEditing(false);
+      setSuccessMessage("Hunter profile updated successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      setErrorMessage("Failed to update profile. Please try again.");
+      setTimeout(() => setErrorMessage(""), 3000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handlePasswordChange = () => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsLoading(true);
+      try {
+        await updateAvatar(file);
+        setSuccessMessage("Avatar updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (error) {
+        setErrorMessage("Failed to update avatar. Please try again.");
+        setTimeout(() => setErrorMessage(""), 3000);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setErrorMessage("Authorization codes don't match");
       setTimeout(() => setErrorMessage(""), 3000);
@@ -114,17 +157,28 @@ export default function ProfilePage() {
       setTimeout(() => setErrorMessage(""), 3000);
       return;
     }
-    setSuccessMessage("Security credentials updated!");
-    setIsChangingPassword(false);
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setTimeout(() => setSuccessMessage(""), 3000);
+    
+    setIsLoading(true);
+    try {
+      await updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      setSuccessMessage("Security credentials updated!");
+      setIsChangingPassword(false);
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || "Failed to update password");
+      setTimeout(() => setErrorMessage(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Calculate stats from user data (you can fetch these from an API endpoint)
   const stats = {
-    missions: 127,
-    clears: 112,
-    sRank: 8,
-    teamSize: 12,
+    missions: 0,
+    clears: 0,
+    sRank: 0,
+    teamSize: 0,
   };
 
   const countMissions = useCountUp(stats.missions);
@@ -143,7 +197,7 @@ export default function ProfilePage() {
 
   return (
     <div className="sys-profile-page min-h-screen bg-[#020c1a] font-['Rajdhani',sans-serif] text-[#e0f7fa] relative">
-      {/* Background Layers */}
+      {/* Background Layers - keep the same */}
       <div className="fixed inset-0 bg-[radial-gradient(circle,rgba(79,195,247,0.055)_1px,transparent_1px)] bg-[size:30px_30px] pointer-events-none z-0" />
       <div className="fixed w-[900px] h-[900px] top-[-300px] left-[-250px] bg-[radial-gradient(circle,rgba(2,80,160,0.13)_0%,transparent_70%)] rounded-full pointer-events-none z-0 blur-[20px]" />
       <div className="fixed w-[600px] h-[600px] bottom-[-200px] right-[-100px] bg-[radial-gradient(circle,rgba(79,195,247,0.07)_0%,transparent_70%)] rounded-full pointer-events-none z-0 blur-[20px]" />
@@ -169,7 +223,17 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Top Bar */}
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.3)] px-6 py-4 flex items-center gap-3">
+              <div className="w-4 h-4 border-2 border-[#4fc3f7] border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs tracking-[2px] uppercase">Processing...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Top Bar - keep the same */}
         <div className="flex items-center justify-between px-5 py-3 bg-[rgba(4,12,28,0.92)] border border-[rgba(79,195,247,0.2)] mb-6 relative overflow-hidden">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 border border-[rgba(79,195,247,0.4)] flex items-center justify-center font-['Cinzel',serif] text-sm font-bold text-[#4fc3f7] relative">
@@ -189,7 +253,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Page Header */}
+        {/* Page Header - keep the same */}
         <div className="mb-6 px-0.5">
           <div className="font-['Cinzel',serif] text-3xl font-black tracking-[3px] bg-gradient-to-r from-[#e0f7fa] to-[#4fc3f7] bg-clip-text text-transparent">
             HUNTER PROFILE
@@ -200,7 +264,7 @@ export default function ProfilePage() {
           <div className="h-px mt-3 bg-gradient-to-r from-[#4fc3f7] via-[rgba(79,195,247,0.1)] to-transparent" />
         </div>
 
-        {/* Profile Header Card */}
+        {/* Profile Header Card - keep the same structure but with dynamic data */}
         <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.2)] overflow-hidden mb-6 animate-[fade-in-up_0.5s_ease_both]">
           {/* Cover with rank gradient */}
           <div className="h-28 relative overflow-hidden">
@@ -265,7 +329,8 @@ export default function ProfilePage() {
                       <>
                         <button
                           onClick={handleSave}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all"
+                          disabled={isLoading}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all disabled:opacity-50"
                         >
                           <Save size={12} /> Save
                         </button>
@@ -289,7 +354,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Hunter Stats */}
+            {/* Hunter Stats - keep as is */}
             <div className="grid grid-cols-4 gap-4 pt-4 border-t border-[rgba(79,195,247,0.1)]">
               <div className="text-center">
                 <p className="text-2xl font-['Cinzel',serif] font-bold text-[#4fc3f7]">{countMissions}</p>
@@ -311,6 +376,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Rest of the form fields - keep the same but they'll use formData state */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left Column - Contact & Info */}
           <div className="space-y-5">
@@ -325,7 +391,7 @@ export default function ProfilePage() {
                   { icon: <Mail size={14} />, name: "email", value: formData.email, type: "email" },
                   { icon: <Phone size={14} />, name: "phone", value: formData.phone, type: "tel" },
                   { icon: <MapPin size={14} />, name: "location", value: formData.location, type: "text" },
-                  { icon: <Calendar size={14} />, value: "Joined: 01.2023", type: "static" },
+                  { icon: <Calendar size={14} />, value: user ? `Joined: ${new Date(user.created_at).toLocaleDateString()}` : "Joined: 01.2023", type: "static" },
                 ].map((field, idx) => (
                   <div key={idx} className="flex items-center gap-3 text-[rgba(79,195,247,0.5)] text-xs tracking-[1px]">
                     <span className="opacity-60">{field.icon}</span>
@@ -354,9 +420,23 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center py-2 border-b border-[rgba(79,195,247,0.1)]">
                   <span className="text-[10px] tracking-[2px] text-[rgba(79,195,247,0.4)]">Current Rank</span>
-                  <span className={`font-['Cinzel',serif] text-lg font-bold ${formData.rank === "S" ? "text-red-400" : formData.rank === "A" ? "text-amber-400" : "text-sky-400"}`}>
-                    {formData.rank}-Rank
-                  </span>
+                  {isEditing ? (
+                    <select
+                      name="rank"
+                      value={formData.rank}
+                      onChange={handleInputChange}
+                      className="font-['Cinzel',serif] text-lg font-bold px-2 py-1 bg-[rgba(4,18,38,0.8)] border border-[rgba(79,195,247,0.3)] text-[#e0f7fa]"
+                    >
+                      <option value="S">S-Rank</option>
+                      <option value="A">A-Rank</option>
+                      <option value="B">B-Rank</option>
+                      <option value="C">C-Rank</option>
+                    </select>
+                  ) : (
+                    <span className={`font-['Cinzel',serif] text-lg font-bold ${formData.rank === "S" ? "text-red-400" : formData.rank === "A" ? "text-amber-400" : "text-sky-400"}`}>
+                      {formData.rank}-Rank
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[rgba(79,195,247,0.1)]">
                   <span className="text-[10px] tracking-[2px] text-[rgba(79,195,247,0.4)]">Clear Rate</span>
@@ -378,8 +458,6 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 {[
                   { icon: <Globe2 size={14} />, name: "website", value: formData.website },
-                  // { icon: <Github size={14} />, name: "github", value: formData.github },
-                  // { icon: <Linkedin size={14} />, name: "linkedin", value: formData.linkedin },
                 ].map((field, idx) => (
                   <div key={idx} className="flex items-center gap-3">
                     <span className="opacity-60">{field.icon}</span>
@@ -402,7 +480,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Right Column - Bio & Settings */}
+          {/* Right Column - keep the same structure */}
           <div className="lg:col-span-2 space-y-5">
             {/* Bio */}
             <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.2)] p-5">
@@ -419,11 +497,11 @@ export default function ProfilePage() {
                   className="w-full px-3 py-2 bg-[rgba(4,18,38,0.8)] border border-[rgba(79,195,247,0.2)] focus:border-[rgba(79,195,247,0.5)] focus:outline-none text-[#e0f7fa] text-sm resize-none"
                 />
               ) : (
-                <p className="text-sm text-[rgba(79,195,247,0.5)] leading-relaxed tracking-wide">{formData.bio}</p>
+                <p className="text-sm text-[rgba(79,195,247,0.5)] leading-relaxed tracking-wide">{formData.bio || "No bio provided."}</p>
               )}
             </div>
 
-            {/* Security */}
+            {/* Security - keep as is but with real API calls */}
             <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.2)] p-5">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-['Cinzel',serif] text-sm font-bold tracking-[2px] text-[#e0f7fa] flex items-center gap-2">
@@ -472,7 +550,8 @@ export default function ProfilePage() {
                   <div className="flex gap-3">
                     <button
                       onClick={handlePasswordChange}
-                      className="px-4 py-2 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all"
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-[rgba(79,195,247,0.1)] border border-[#4fc3f7] text-[10px] tracking-[2px] uppercase text-[#4fc3f7] hover:bg-[rgba(79,195,247,0.2)] transition-all disabled:opacity-50"
                     >
                       Update
                     </button>
@@ -507,7 +586,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Preferences */}
+            {/* Preferences - keep as is */}
             <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.2)] p-5">
               <h3 className="font-['Cinzel',serif] text-sm font-bold tracking-[2px] text-[#e0f7fa] mb-4 flex items-center gap-2">
                 <div className="w-1 h-4 bg-[#4fe6a0] shadow-[0_0_6px_#4fe6a0]" />
@@ -555,7 +634,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Danger Zone */}
+            {/* Danger Zone - keep as is */}
             <div className="border border-red-500/30 bg-red-500/5 p-5">
               <h3 className="font-['Cinzel',serif] text-sm font-bold tracking-[2px] text-red-400 mb-2">DANGER ZONE</h3>
               <p className="text-[10px] tracking-[1.5px] text-red-400/60 mb-4">Termination of hunter credentials is irreversible. All mission data will be purged.</p>
@@ -567,7 +646,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
+        {/* Bottom Bar - keep the same */}
         <div className="flex items-center justify-between mt-5 px-4 py-2 bg-[rgba(4,12,28,0.85)] border border-[rgba(79,195,247,0.1)] text-[10px] tracking-[2px] uppercase text-[rgba(79,195,247,0.25)]">
           <span>Hunter Registry v1.0 · Classified Data</span>
           <span className="text-[rgba(79,230,160,0.5)]">⬡ Authorization Active</span>

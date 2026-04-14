@@ -1,6 +1,6 @@
 // frontend/src/services/token.service.ts
 import { jwtDecode } from 'jwt-decode';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../features/auth/store/authStore';
 import apiClient from './api.client';
 
 interface DecodedToken {

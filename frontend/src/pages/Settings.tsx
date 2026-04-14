@@ -1,6 +1,6 @@
 // frontend/src/features/settings/Settings.tsx
 import { useState, useEffect } from "react";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore } from "../features/auth/store/authStore";
 import { useTheme } from "../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
 import {

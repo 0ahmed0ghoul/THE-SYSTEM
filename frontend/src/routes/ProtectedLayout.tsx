@@ -1,48 +1,37 @@
-// frontend/src/routes/ProtectedLayout.tsx
-import { Navigate, Outlet } from "react-router-dom";
-import { useAuthStore } from "../store/authStore";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuthStore } from "../features/auth/store/authStore";
 
-export const ProtectedLayout = ({ children }: { children?: React.ReactNode }) => {
-  const { user, token, checkAuth, isLoading } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
+export const ProtectedLayout = () => {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const initializing = useAuthStore((s) => s.initializing);
+  const checkAuth = useAuthStore((s) => s.checkAuth);
+
+  const location = useLocation();
 
   useEffect(() => {
-    const verifyAuth = async () => {
-      // Check authentication status
-      const isValid = checkAuth();
-      setIsChecking(false);
-      
-      if (!isValid) {
-        console.log('Authentication failed, redirecting to login');
-      }
-    };
-    
-    verifyAuth();
+    checkAuth();
   }, [checkAuth]);
 
-  // Show loading state while checking authentication
-  if (isChecking || isLoading) {
+  // ✅ Wait for hydration only
+  if (initializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#020c1a]">
-        <div className="text-center">
-          <div className="text-[#4fc3f7] mb-4 font-[Rajdhani] tracking-wider">
-            Verifying credentials...
-          </div>
-          <div className="w-8 h-8 border-2 border-[#4fc3f7] border-t-transparent rounded-full animate-spin mx-auto" />
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
       </div>
     );
   }
 
-  // Check if user is authenticated
-  const isAuthenticated = !!user && !!token;
-  
-  if (!isAuthenticated) {
-    console.log('No authenticated user, redirecting to login');
-    return <Navigate to="/login" replace />;
+  if (!token || !user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // Render children or outlet
-  return <>{children || <Outlet />}</>;
+  const isOnProfile = location.pathname === "/complete-profile";
+
+  if (user.is_profile_complete === false && !isOnProfile) {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
+  return <Outlet />;
 };

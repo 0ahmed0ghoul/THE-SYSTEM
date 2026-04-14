@@ -1,94 +1,178 @@
-// auth.service.ts
-import { db } from '../config/db.js';
-import bcrypt from 'bcrypt';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { HttpError } from '../utils/httpError.js';
+// backend/src/services/auth.service.ts
 
-export interface User {
-  id: number
-  email: string;
-}
+import { db } from "../config/db.js";
+import bcrypt from "bcrypt";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
+import { HttpError } from "../utils/httpError.js";
 
-// Extend RowDataPacket for SELECT queries
-interface UserRow extends RowDataPacket {
+/**
+ * =========================
+ * TYPES
+ * =========================
+ */
+
+export interface UserRow extends RowDataPacket {
   id: number;
+  name: string | null;
   email: string;
-  password_hash: string;
-  name?: string;
+  password_hash: string | null;
+  bio?: string;
+  avatar?: string;
+  phone?: string;
+  role?: string;
+  is_profile_complete: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// ✅ Login user
+/**
+ * =========================
+ * FIND USER
+ * =========================
+ */
+export async function findUserByEmail(email: string): Promise<UserRow | null> {
+  const [rows] = await db.execute<UserRow[]>(
+    `SELECT * FROM users WHERE email = ? LIMIT 1`,
+    [email.toLowerCase()]
+  );
+
+  return rows.length ? rows[0] : null;
+}
+
+export async function findUserById(id: number): Promise<UserRow | null> {
+  const [rows] = await db.execute<UserRow[]>(
+    `SELECT * FROM users WHERE id = ? LIMIT 1`,
+    [id]
+  );
+
+  return rows.length ? rows[0] : null;
+}
+
+/**
+ * =========================
+ * CREATE USER (FIXED)
+ * =========================
+ */
+export async function createUser(input: {
+  name?: string;
+  email: string;
+  password?: string | null;
+}): Promise<UserRow> {
+  const email = input.email.toLowerCase();
+
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    throw new HttpError(409, "Email already exists");
+  }
+
+  const passwordHash =
+    input.password ? await bcrypt.hash(input.password, 10) : null;
+
+  const [result] = await db.execute<ResultSetHeader>(
+    `
+    INSERT INTO users (name, email, password_hash, is_profile_complete)
+    VALUES (?, ?, ?, 0)
+    `,
+    [input.name || null, email, passwordHash]
+  );
+
+  const user = await findUserById(result.insertId);
+
+  if (!user) {
+    throw new HttpError(500, "User creation failed");
+  }
+
+  return user;
+}
+
+/**
+ * =========================
+ * LOGIN USER
+ * =========================
+ */
 export async function loginUser(input: {
   email: string;
   password: string;
-}): Promise<User> {
-  const email = input.email.trim().toLowerCase();
-  const password = input.password;
+}) {
+  const user = await findUserByEmail(input.email);
 
-  if (!email || !password) {
-    throw new HttpError(400, "Email and password are required");
+  if (!user || !user.password_hash) {
+    throw new HttpError(401, "Invalid credentials");
   }
 
-  // ✅ Properly type the SELECT query result
-  const [rows] = await db.execute<UserRow[]>(
-    `SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1`,
-    [email]
+  const isValid = await bcrypt.compare(
+    input.password,
+    user.password_hash
   );
 
-  if (rows.length === 0) {
-    throw new HttpError(401, "Invalid email or password");
-  }
-
-  const user = rows[0];
-  const isValidPassword = await bcrypt.compare(password, user.password_hash);
-
-  if (!isValidPassword) {
-    throw new HttpError(401, "Invalid email or password");
+  if (!isValid) {
+    throw new HttpError(401, "Invalid credentials");
   }
 
   return {
     id: user.id,
     email: user.email,
+    name: user.name,
+    role: user.role || "user",
+    is_profile_complete: user.is_profile_complete,
   };
 }
 
-// ✅ Register user
-export async function registerUser(input: {
+/**
+ * =========================
+ * COMPLETE PROFILE (FIXED)
+ * =========================
+ */
+export async function completeProfileService(input: {
+  userId: number;
   name?: string;
-  email: string;
-  password: string;
-}): Promise<User> {
-  const email = input.email.trim().toLowerCase();
-  const name = input.name?.trim() || null;
+  bio?: string;
+  avatar?: string;
+  phone?: string;
+}) {
+  const user = await findUserById(input.userId);
 
-  // ✅ Properly type the SELECT query result
-  const [existingRows] = await db.execute<UserRow[]>(
-    `SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1`,
-    [email]
+  if (!user) {
+    throw new HttpError(404, "User not found");
+  }
+
+  const updates: string[] = [];
+  const values: any[] = [];
+
+  if (input.name !== undefined) {
+    updates.push("name = ?");
+    values.push(input.name);
+  }
+
+  if (input.bio !== undefined) {
+    updates.push("bio = ?");
+    values.push(input.bio);
+  }
+
+  if (input.avatar !== undefined) {
+    updates.push("avatar = ?");
+    values.push(input.avatar);
+  }
+
+  if (input.phone !== undefined) {
+    updates.push("phone = ?");
+    values.push(input.phone);
+  }
+
+  updates.push("is_profile_complete = 1");
+
+  values.push(input.userId);
+
+  await db.execute(
+    `
+    UPDATE users
+    SET ${updates.join(", ")}
+    WHERE id = ?
+    `,
+    values
   );
 
-  if (existingRows.length > 0) {
-    throw new HttpError(409, "Email already exists");
-  }
+  const updated = await findUserById(input.userId);
 
-  const passwordHash = await bcrypt.hash(input.password, 10);
-
-  let query: string;
-  let params: any[];
-
-  if (name) {
-    query = `INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)`;
-    params = [name, email, passwordHash];
-  } else {
-    query = `INSERT INTO users (email, password_hash) VALUES (?, ?)`;
-    params = [email, passwordHash];
-  }
-
-  // ✅ Properly type the INSERT query result
-  const [result] = await db.execute<ResultSetHeader>(query, params);
-
-  return {
-    id: result.insertId,
-    email,
-  };
+  return updated;
 }

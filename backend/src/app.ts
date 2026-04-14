@@ -7,6 +7,9 @@ import { projectsRouter } from "./routes/projects.routes.js";
 import { tasksRouter } from "./routes/tasks.routes.js";
 import dashboardRouter from "./routes/dashboard.routes.js";
 import debugRoutes from "./routes/debug.routes.js";
+import "./config/google.strategy.js";
+import passport from "passport";
+
 export const app = express();
 
 app.use(
@@ -17,6 +20,8 @@ app.use(
 );
 app.use(express.json());
 
+
+app.use(passport.initialize());
 app.get("/api/health", (_req, res) => {
 	res.json({ status: "ok" });
 });

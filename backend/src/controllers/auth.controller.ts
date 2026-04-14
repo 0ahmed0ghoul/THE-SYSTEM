@@ -1,9 +1,29 @@
 // backend/src/controllers/auth.controller.ts
 import type { Request, Response } from "express";
 import { HttpError } from "../utils/httpError.js";
-import { loginUser, registerUser } from "../services/auth.service.js";
+import { completeProfileService, loginUser, createUser } from "../services/auth.service.js";
 import { loginSchema, registerSchema } from "../validators/auth.validators.js";
 import { signUserToken } from "../utils/jwt.js";
+import { RowDataPacket, ResultSetHeader } from "mysql2";
+
+type CompleteProfileBody = {
+  name?: string;
+  bio?: string;
+  avatar?: string;
+  phone?: string;
+};
+
+interface UserRow extends RowDataPacket {
+  id: number;
+  name: string;
+  email: string;
+  bio?: string;
+  avatar?: string;
+  phone?: string;
+  is_profile_complete: number;
+}
+
+
 
 export async function registerHandler(req: Request, res: Response) {
   try {
@@ -11,7 +31,7 @@ export async function registerHandler(req: Request, res: Response) {
     const payload = registerSchema.parse(req.body);
 
     // ✅ Create user (returns { id, email })
-    const user = await registerUser({
+    const user = await createUser({
       name: payload.name,
       email: payload.email,
       password: payload.password,
@@ -26,7 +46,10 @@ export async function registerHandler(req: Request, res: Response) {
       message: "User registered successfully",
       user: {
         id: user.id,
-        email: user.email
+        name: user.name,
+        email: user.email,
+        created_at: user.created_at,
+        updated_at: user.updated_at
       },
       token,
     });
@@ -111,6 +134,42 @@ export async function loginHandler(req: Request, res: Response) {
   }
 }
 
+export async function completeProfileHandler(req: Request, res: Response) {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      throw new HttpError(401, "Unauthorized");
+    }
+
+    const body = req.body as CompleteProfileBody;
+
+    const user = await completeProfileService({
+      userId,
+      ...body,
+    });
+
+    return res.json({
+      success: true,
+      message: "Profile completed successfully",
+      user,
+    });
+  } catch (err: any) {
+    console.error("Complete Profile Error:", err);
+
+    if (err instanceof HttpError) {
+      return res.status(err.statusCode).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
 // Optional: Get current user handler
 export async function meHandler(req: Request, res: Response) {
   try {

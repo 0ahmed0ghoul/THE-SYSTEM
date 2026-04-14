@@ -1,7 +1,8 @@
 // frontend/src/features/projects/store/projectStore.ts
 import { create } from "zustand";
-import { useAuthStore } from "./authStore";
+import { useAuthStore } from "../features/auth/store/authStore";
 import axios from "axios";
+import { projectsApi } from "../api/projects.api";
 
 export const statsData = {
   totalProjects: 10,
@@ -52,6 +53,8 @@ export interface ProjectStats {
 
 interface ProjectStore {
   projects: Project[];
+  isLoading: boolean;
+  error: string | null;
   addProject: (projectData: Omit<Project, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => void;
   removeProject: (id: number) => void;
   updateProject: (id: number, updates: Partial<Project>) => void;
@@ -69,14 +72,49 @@ interface ProjectStore {
     onHold: number;
     archived: number;
   };
+  // Add these new methods
+  fetchProjects: () => Promise<void>;
+  getActiveProjects: () => Project[];
+  getHighPriorityProjects: () => Project[];
 }
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
   projects: [],
+  isLoading: false,
+  error: null,
   
+  // Add fetch projects method
+  fetchProjects: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const projects = await projectsApi.getAll();
+      set({ projects, isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      set({ error: 'Failed to fetch projects', isLoading: false });
+    }
+  },
+  
+  // Add getActiveProjects method
+  getActiveProjects: () => {
+    const user = useAuthStore.getState().user;
+    if (!user) return [];
+    return get().projects.filter(p => p.ownerId === user.id && p.status === "active");
+  },
+  
+  // Add getHighPriorityProjects method
+  getHighPriorityProjects: () => {
+    const user = useAuthStore.getState().user;
+    if (!user) return [];
+    return get().projects.filter(p => 
+      p.ownerId === user.id && 
+      (p.priority === "high" || p.priority === "urgent")
+    );
+  },
+  
+  // Keep your existing methods
   addProject: async (projectData) => {
     try {
-      // Only send essential fields for now
       const response = await axios.post('/api/projects', {
         name: projectData.name,
         description: projectData.description,
@@ -87,8 +125,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         progress: projectData.progress,
         visibility: projectData.visibility,
         requiresApproval: projectData.requiresApproval,
-        // Other fields (category, projectLead, teamMembers, estimatedHours, 
-        // clientName, budget, tags, goals) will be added later in a separate update
       });
       
       set((state) => ({

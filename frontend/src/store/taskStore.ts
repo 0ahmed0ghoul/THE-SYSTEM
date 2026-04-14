@@ -1,5 +1,6 @@
 // frontend/src/features/store/taskStore.ts
 import { create } from "zustand";
+import { taskApi } from "../api/task.api";
 
 // ✅ Task Status Type - Export this for use across the app
 export type TaskStatus = "todo" | "inprogress" | "done";
@@ -124,6 +125,8 @@ export const COLUMNS: { id: TaskStatus; title: string; icon: string }[] = [
 
 interface TaskStore {
   tasks: Task[];
+  isLoading: boolean;
+  error: string | null;
   addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => void;
   updateTask: (id: number, updates: Partial<Task>) => void;
   deleteTask: (id: number) => void;
@@ -131,7 +134,6 @@ interface TaskStore {
   getProjectTasks: (projectId: number) => Task[];
   addComment: (taskId: number, comment: Comment) => void;
   toggleSubtask: (taskId: number, subtaskId: number) => void;
-  // ✅ Additional useful methods
   getTasksByStatus: (status: TaskStatus) => Task[];
   getTasksByPriority: (priority: TaskPriority) => Task[];
   getTaskStats: () => {
@@ -142,100 +144,43 @@ interface TaskStore {
     highPriority: number;
     urgent: number;
   };
+  // Add these new methods
+  fetchTasks: () => Promise<void>;
+  getRecentTasks: (limit?: number) => Task[];
+  getHighPriorityTasks: () => Task[];
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
-  tasks: [
-    // Sample tasks
-    {
-      id: 1,
-      title: "Complete API documentation",
-      description: "Write comprehensive API documentation for the new endpoints",
-      status: "inprogress",
-      priority: "high",
-      projectId: 3,
-      projectName: "API Integration",
-      assignee: {
-        id: 1,
-        name: "John Doe",
-        email: "john@example.com",
-      },
-      dueDate: "2026-04-15",
-      tags: ["api", "documentation"],
-      subtasks: [
-        { id: 1, title: "Review existing docs", completed: true },
-        { id: 2, title: "Write endpoint descriptions", completed: false },
-        { id: 3, title: "Add code examples", completed: false },
-      ],
-      attachments: [
-        { id: 1, name: "api-spec.pdf", size: "2.3 MB", url: "#" },
-      ],
-      comments: [
-        {
-          id: 1,
-          taskId: 1,
-          userId: 2,
-          userName: "Jane Smith",
-          content: "Don't forget to include authentication details",
-          createdAt: new Date().toISOString(),
-          userAvatar: "https://i.pravatar.cc/150?img=2",
-          
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      title: "Design system components",
-      description: "Create reusable React components for buttons, modals, and forms",
-      status: "todo",
-      priority: "medium",
-      projectId: 10,
-      projectName: "Design System",
-      assignee: {
-        id: 3,
-        name: "Mike Johnson",
-        email: "mike@example.com",
-      },
-      dueDate: "2026-04-20",
-      tags: ["design", "ui", "components"],
-      subtasks: [
-        { id: 4, title: "Design button variants", completed: false },
-        { id: 5, title: "Create modal component", completed: false },
-      ],
-      attachments: [],
-      comments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 3,
-      title: "User testing session",
-      description: "Conduct user testing for the mobile app redesign",
-      status: "done",
-      priority: "high",
-      projectId: 2,
-      projectName: "Mobile App Redesign",
-      assignee: {
-        id: 4,
-        name: "Sarah Williams",
-        email: "sarah@example.com",
-      },
-      dueDate: "2026-04-10",
-      tags: ["testing", "ux"],
-      subtasks: [
-        { id: 6, title: "Recruit participants", completed: true },
-        { id: 7, title: "Create test scenarios", completed: true },
-        { id: 8, title: "Run testing sessions", completed: true },
-      ],
-      attachments: [],
-      comments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ],
+  tasks: [],
+  isLoading: false,
+  error: null,
   
+  // Add fetch tasks method
+  fetchTasks: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const tasks = await taskApi.getAll();
+      set({ tasks, isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      set({ error: 'Failed to fetch tasks', isLoading: false });
+    }
+  },
+  
+  // Add getRecentTasks method
+  getRecentTasks: (limit = 3) => {
+    const tasks = get().tasks;
+    return tasks
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
+  },
+  
+  // Add getHighPriorityTasks method
+  getHighPriorityTasks: () => {
+    return get().tasks.filter(task => task.priority === 'high' || task.priority === 'urgent');
+  },
+  
+  // Keep all your existing methods
   addTask: (task) => {
     const newTask: Task = {
       ...task,
@@ -313,3 +258,4 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }));
   },
 }));
+

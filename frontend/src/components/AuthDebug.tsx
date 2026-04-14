@@ -1,6 +1,6 @@
 // frontend/src/components/AuthDebug.tsx
 import { useEffect } from 'react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../features/auth/store/authStore';
 
 export const AuthDebug = () => {
   const { user, token, isAuthenticated, checkAuth } = useAuthStore();
