@@ -35,10 +35,10 @@ export default function CompleteProfileWizard() {
 
       await updateProfile({
         ...form,
-        is_profile_complete: true,
+        is_profile_complete: 1,
       });
 
-      navigate("/dashboard");
+      navigate("/profile");
     } catch (err) {
       console.error(err);
     } finally {

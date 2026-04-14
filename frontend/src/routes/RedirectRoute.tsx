@@ -7,9 +7,9 @@ export const RootRedirect = () => {
 
   if (!token) return <Navigate to="/login" replace />;
 
-  if (user?.is_profile_complete === false) {
+  if (user?.is_profile_complete === 0) {
     return <Navigate to="/complete-profile" replace />;
   }
 
-  return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/" replace />;
 };

@@ -29,7 +29,7 @@ export const ProtectedLayout = () => {
 
   const isOnProfile = location.pathname === "/complete-profile";
 
-  if (user.is_profile_complete === false && !isOnProfile) {
+  if (user.is_profile_complete === 0 && !isOnProfile) {
     return <Navigate to="/complete-profile" replace />;
   }
 

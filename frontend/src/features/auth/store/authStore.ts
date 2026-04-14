@@ -149,7 +149,7 @@ export const useAuthStore = create<AuthState>()(
           user: parsed,
           isAuthenticated: true,
           initializing: false,
-          needsProfileCompletion: parsed.is_profile_complete === false,
+          needsProfileCompletion: parsed.is_profile_complete === 0,
         });
       
         return true;
