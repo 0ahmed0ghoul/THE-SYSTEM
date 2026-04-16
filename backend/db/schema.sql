@@ -20,10 +20,12 @@ CREATE TABLE IF NOT EXISTS tasks (
   status ENUM('todo', 'in-progress', 'done') NOT NULL DEFAULT 'todo',
   project_id BIGINT NOT NULL,
   assigned_to BIGINT NULL,
+  due_date DATE NULL,
   position INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_tasks_project_id (project_id),
   INDEX idx_tasks_project_status_position (project_id, status, position),
+  INDEX idx_tasks_due_date (due_date),
   INDEX idx_tasks_assigned_to (assigned_to),
   CONSTRAINT fk_tasks_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   CONSTRAINT fk_tasks_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL

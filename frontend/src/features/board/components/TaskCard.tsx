@@ -32,6 +32,7 @@ export default function TaskCard({ task }: { task: Task }) {
     low: "bg-gray-200 text-gray-600",
     medium: "bg-yellow-100 text-yellow-700",
     high: "bg-red-100 text-red-600",
+    urgent: "bg-red-200 text-red-700",
   }[task.priority || "medium"];
 
   return (

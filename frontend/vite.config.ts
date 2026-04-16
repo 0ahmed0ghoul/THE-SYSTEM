@@ -8,6 +8,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      disable: true,
       registerType: "autoUpdate",
       manifest: {
         name: "Workflow Manager",

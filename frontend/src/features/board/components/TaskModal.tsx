@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useCallback } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import type { Task, TaskStatus } from "../../../store/taskStore";
+import type { Task, TaskPriority, TaskStatus } from "../../../store/taskStore";
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,7 +18,7 @@ export default function TaskModal({
 }: TaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
 
   // ✅ Sync state properly when modal opens
   const [taskStatus, setTaskStatus] = useState<TaskStatus>(
@@ -115,12 +115,13 @@ export default function TaskModal({
                 className="w-full border border-gray-200 p-2 mb-3 rounded-lg"
                 value={priority}
                 onChange={(e) =>
-                  setPriority(e.target.value as "low" | "medium" | "high")
+                  setPriority(e.target.value as TaskPriority)
                 }
               >
                 <option value="low">Low Priority</option>
                 <option value="medium">Medium Priority</option>
                 <option value="high">High Priority</option>
+                <option value="urgent">Urgent Priority</option>
               </select>
 
               {/* Actions */}

@@ -13,5 +13,4 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  password: string; // only for mock testing, remove when backend is ready
 }

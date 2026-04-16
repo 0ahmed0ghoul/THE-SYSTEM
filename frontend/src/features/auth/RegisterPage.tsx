@@ -1,16 +1,11 @@
 import { useState } from "react";
 import { Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
-
-// --- MOCK HOOKS FOR STANDALONE PREVIEW ---
-const useAuthStore = (_: any) => (callback: (user: any) => void) => callback;
-const useNavigate = () => (path: string) => console.log("Navigate to:", path);
-const registerRequest = async (form: any) => {
-  await new Promise((r) => setTimeout(r, 1000));
-  return { user: { name: form.name, email: form.email } };
-};
+import { useAuthStore } from "../../store/authStore";
+import { useNavigate } from "react-router-dom";
+import { registerRequest } from "./auth.api";
 
 export default function RegisterPage() {
-  const setUser = useAuthStore((s: any) => s?.setUser);
+  const setUser = useAuthStore((s) => s.setUser);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -51,12 +46,25 @@ export default function RegisterPage() {
     }
 
     try {
-      const data = await registerRequest(form);
-      setUser((user: any) => ({ ...user, ...data.user }));
+      const data = await registerRequest({
+        email: form.email,
+        password: form.password,
+      });
+      setUser(data.user);
       setAwakened(true);
       setTimeout(() => navigate("/"), 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Awakening failed. Try again.");
+    } catch (err: unknown) {
+      const message =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response
+          ?.data?.message === "string"
+          ? (err as { response?: { data?: { message?: string } } }).response!.data!
+              .message!
+          : "Awakening failed. Try again.";
+
+      setError(message);
     } finally {
       setLoading(false);
     }

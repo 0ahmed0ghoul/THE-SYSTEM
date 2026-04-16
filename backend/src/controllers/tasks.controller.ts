@@ -3,6 +3,8 @@ import { HttpError } from "../utils/httpError.js";
 import {
   createTask,
   deleteTaskByIdAndUserId,
+  getTaskByIdAndUserIdPublic,
+  getTasksByUserId,
   getTasksByProjectIdAndUserId,
   updateTaskByIdAndUserId,
 } from "../services/tasks.service.js";
@@ -17,8 +19,24 @@ export async function getTasksHandler(req: Request, res: Response) {
   const userId = req.userId!;
   const { projectId } = listTasksQuerySchema.parse(req.query);
 
-  const tasks = await getTasksByProjectIdAndUserId(projectId, userId);
+  const tasks = projectId
+    ? await getTasksByProjectIdAndUserId(projectId, userId)
+    : await getTasksByUserId(userId);
+
   return res.json(tasks);
+}
+
+export async function getTaskByIdHandler(req: Request, res: Response) {
+  const userId = req.userId!;
+  const { id } = taskIdParamSchema.parse(req.params);
+
+  const task = await getTaskByIdAndUserIdPublic(id, userId);
+
+  if (!task) {
+    throw new HttpError(404, "Task not found");
+  }
+
+  return res.json(task);
 }
 
 export async function createTaskHandler(req: Request, res: Response) {
@@ -30,6 +48,7 @@ export async function createTaskHandler(req: Request, res: Response) {
     projectId: payload.projectId,
     userId,
     assignedTo: payload.assignedTo,
+    dueDate: payload.dueDate,
   });
 
   if (!task) {
@@ -50,6 +69,7 @@ export async function updateTaskHandler(req: Request, res: Response) {
     title: payload.title,
     status: payload.status,
     assignedTo: payload.assignedTo,
+    dueDate: payload.dueDate,
     position: payload.position,
   });
 

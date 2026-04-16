@@ -18,7 +18,6 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import { tasksData } from "../../pages/data";
 import { useProjectStore } from "../../store/projectStore";
 import { useTaskStore } from "../../store/taskStore";
 
@@ -61,9 +60,21 @@ function getRankStyle(rank: string) {
 function taskStatusStyle(status: string) {
   return (
     {
-      todo: { cls: "text-sky-400/50 border-sky-400/20", label: "STANDBY", icon: <Clock size={12} /> },
-      inprogress: { cls: "text-amber-400 border-amber-400/35", label: "IN PROGRESS", icon: <AlertCircle size={12} /> },
-      done: { cls: "text-emerald-400 border-emerald-400/35", label: "COMPLETE", icon: <CheckCircle2 size={12} /> },
+      todo: { 
+        cls: "text-sky-400 border-sky-400/50 bg-sky-400/8 shadow-[0_0_12px_rgba(79,195,247,0.3)]", 
+        label: "STANDBY", 
+        icon: <Clock size={12} /> 
+      },
+      inprogress: { 
+        cls: "text-amber-300 border-amber-400/60 bg-amber-400/12 shadow-[0_0_12px_rgba(255,180,70,0.4)]", 
+        label: "IN PROGRESS", 
+        icon: <AlertCircle size={12} /> 
+      },
+      done: { 
+        cls: "text-emerald-400 border-emerald-500/60 bg-emerald-500/12 shadow-[0_0_12px_rgba(79,230,160,0.4)]", 
+        label: "COMPLETE", 
+        icon: <CheckCircle2 size={12} /> 
+      },
     }[status] ?? { cls: "text-sky-400/50 border-sky-400/20", label: status.toUpperCase(), icon: <Clock size={12} /> }
   );
 }
@@ -147,8 +158,8 @@ function StatCard({
 
 export default function TasksPage() {
   const navigate = useNavigate();
-  const { tasks, updateTask, deleteTask } = useTaskStore();
-  const { projects } = useProjectStore();
+  const { tasks, loadTasks, updateTask, deleteTask, addTask } = useTaskStore();
+  const { projects, loadProjects } = useProjectStore();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "todo" | "inprogress" | "done">("all");
@@ -156,6 +167,21 @@ export default function TasksPage() {
   const [projectFilter, setProjectFilter] = useState<"all" | number>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [menuOpen, setMenuOpen] = useState<number | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskProjectId, setNewTaskProjectId] = useState<number | "">(projects[0]?.id ?? "");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
+
+  useEffect(() => {
+    void loadProjects();
+    void loadTasks();
+  }, [loadProjects, loadTasks]);
+
+  useEffect(() => {
+    if (projects.length > 0 && newTaskProjectId === "") {
+      setNewTaskProjectId(projects[0].id);
+    }
+  }, [projects, newTaskProjectId]);
 
   const getProjectName = (projectId: number) => {
     const project = projects.find(p => p.id === projectId);
@@ -191,6 +217,34 @@ export default function TasksPage() {
     if (window.confirm("Are you sure you want to delete this quest?")) {
       deleteTask(taskId);
       setMenuOpen(null);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!newTaskTitle.trim() || !newTaskProjectId) {
+      alert("Please enter a quest title and select a gate");
+      return;
+    }
+
+    try {
+      await addTask({
+        title: newTaskTitle,
+        projectId: newTaskProjectId as number,
+        dueDate: newTaskDueDate || undefined,
+        status: "todo",
+        priority: "medium",
+      });
+      
+      setNewTaskTitle("");
+      setNewTaskProjectId(projects[0]?.id ?? "");
+      setNewTaskDueDate("");
+      setShowCreateModal(false);
+    } catch (error: any) {
+      console.error("Full error:", error);
+      console.error("Status:", error.response?.status);
+      console.error("Data:", error.response?.data);
+      console.error("Token:", localStorage.getItem("auth_token"));
+      alert(`Failed to create quest: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -286,8 +340,8 @@ export default function TasksPage() {
               </span>
             </div>
             <button
-              onClick={() => navigate("/tasks/new")}
-              className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[2px] uppercase text-[rgba(79,195,247,0.4)] border border-[rgba(79,195,247,0.2)] px-3 py-1.5 hover:border-[#4fc3f7] hover:text-[#4fc3f7] transition-all duration-200"
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] border border-[#4fc3f7]/60 bg-[#4fc3f7]/8 px-3 py-1.5 hover:bg-[#4fc3f7]/15 hover:border-[#4fc3f7] hover:shadow-[0_0_12px_#4fc3f78a] transition-all duration-200"
             >
               <Plus size={12} /> ADD QUEST
             </button>
@@ -425,7 +479,7 @@ export default function TasksPage() {
                             <h3 className="text-base font-semibold tracking-wide text-[#e0f7fa] group-hover:text-[#4fc3f7] transition-colors">
                               {task.title}
                             </h3>
-                            <span className={`text-[9px] font-semibold tracking-[1.5px] uppercase px-2 py-0.5 border flex items-center gap-1.5 ${statusStyle.cls}`}>
+                            <span className={`text-[9px] font-semibold tracking-[1.5px] uppercase px-2.5 py-1 border flex items-center gap-1.5 rounded-sm transition-all ${statusStyle.cls}`}>
                               {statusStyle.icon}
                               {statusStyle.label}
                             </span>
@@ -478,9 +532,9 @@ export default function TasksPage() {
                           {menuOpen === task.id && (
                             <>
                               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
-                              <div className="absolute right-0 mt-2 w-44 bg-[rgba(4,12,28,0.98)] border border-[rgba(79,195,247,0.2)] backdrop-blur-sm z-20">
+                              <div className="absolute right-0 mt-2 w-44 bg-[rgba(4,12,28,0.98)] border border-[#4fc3f7]/40 backdrop-blur-sm z-20 shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
                                 <div className="py-1">
-                                  <p className="text-[9px] font-semibold tracking-[1.5px] text-[rgba(79,195,247,0.5)] px-3 py-1.5 uppercase">
+                                  <p className="text-[9px] font-semibold tracking-[1.5px] text-[#4fc3f7] px-3 py-2 uppercase border-b border-[#4fc3f7]/20">
                                     Update Status
                                   </p>
                                   {(["todo", "inprogress", "done"] as const).map((status) => {
@@ -492,21 +546,22 @@ export default function TasksPage() {
                                           e.stopPropagation();
                                           handleStatusChange(task.id, status);
                                         }}
-                                        className="w-full text-left px-3 py-1.5 text-xs tracking-[1px] hover:bg-[rgba(79,195,247,0.1)] text-[rgba(79,195,247,0.7)] flex items-center gap-2"
+                                        className={`w-full text-left px-3 py-2 text-xs tracking-[1px] hover:bg-[${status === 'done' ? '#4fe6a0' : status === 'inprogress' ? '#ffb347' : '#4fc3f7'}/10] text-[#e0f7fa] flex items-center gap-2 transition-all border-l-2 ${status === 'done' ? 'border-emerald-500' : status === 'inprogress' ? 'border-amber-400' : 'border-sky-400'}`}
                                       >
                                         {sStyle.icon}
-                                        {sStyle.label}
+                                        <span className="font-semibold">{sStyle.label}</span>
                                       </button>
                                     );
                                   })}
-                                  <div className="border-t border-[rgba(79,195,247,0.1)] my-1" />
+                                  <div className="border-t border-[#4fc3f7]/20 my-1" />
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleDeleteTask(task.id);
                                     }}
-                                    className="w-full text-left px-3 py-1.5 text-xs tracking-[1px] text-red-400 hover:bg-[rgba(255,100,100,0.1)]"
+                                    className="w-full text-left px-3 py-2 text-xs tracking-[1px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all flex items-center gap-2"
                                   >
+                                    <X size={12} />
                                     Delete Quest
                                   </button>
                                 </div>
@@ -542,7 +597,7 @@ export default function TasksPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => navigate("/tasks/new")}
+                    onClick={() => setShowCreateModal(true)}
                     className="inline-flex items-center gap-2 text-[10px] tracking-[2px] uppercase text-[rgba(79,195,247,0.5)] border border-[rgba(79,195,247,0.3)] px-4 py-2 hover:border-[#4fc3f7] hover:text-[#4fc3f7] transition-all"
                   >
                     <Plus size={12} /> Register New Quest
@@ -561,6 +616,110 @@ export default function TasksPage() {
           <span>Last Sync: Just Now</span>
         </div>
       </div>
+
+      {/* Create Task Modal */}
+      {showCreateModal && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md"
+            onClick={() => setShowCreateModal(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[rgba(4,18,38,0.98)] border border-[#4fc3f7]/40 backdrop-blur-sm relative overflow-hidden">
+              {/* Accent lines */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#4fc3f7] to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#4fc3f7] to-transparent" />
+              
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#4fc3f7]/20 relative">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-6 bg-gradient-to-b from-[#4fc3f7] to-[#ffd54f] shadow-[0_0_8px_#4fc3f7]" />
+                  <h3 className="font-['Cinzel',serif] text-sm font-bold tracking-[2px] text-[#e0f7fa]">
+                    REGISTER QUEST
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="p-1.5 hover:bg-[#4fc3f7]/10 transition-colors rounded hover:text-[#4fc3f7]"
+                >
+                  <X size={16} className="text-[rgba(79,195,247,0.6)]" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 space-y-5 bg-[rgba(4,18,38,0.5)]">
+                {/* Quest Title */}
+                <div>
+                  <label className="block text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] mb-2.5">
+                    Quest Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    placeholder="Enter quest title..."
+                    className="w-full px-3 py-2.5 bg-[rgba(4,12,28,0.8)] border border-[#4fc3f7]/30 focus:border-[#4fc3f7] focus:outline-none focus:shadow-[0_0_12px_#4fc3f730] text-[#e0f7fa] text-sm placeholder:text-[rgba(79,195,247,0.3)] transition-all"
+                  />
+                </div>
+
+                {/* Gate Selection */}
+                <div>
+                  <label className="block text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] mb-2.5">
+                    Gate (Project) *
+                  </label>
+                  <select
+                    value={newTaskProjectId}
+                    onChange={(e) => setNewTaskProjectId(parseInt(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-[rgba(4,12,28,0.8)] border border-[#4fc3f7]/30 focus:border-[#4fc3f7] focus:outline-none focus:shadow-[0_0_12px_#4fc3f730] text-[#e0f7fa] text-sm transition-all"
+                  >
+                    <option value="">Select a gate...</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                  {projects.length === 0 && (
+                    <p className="text-[10px] text-amber-400 mt-2 flex items-center gap-1">
+                      <AlertCircle size={10} /> No gates available. Create a project first.
+                    </p>
+                  )}
+                </div>
+
+                {/* Due Date */}
+                <div>
+                  <label className="block text-[10px] font-semibold tracking-[2px] uppercase text-[#4fc3f7] mb-2.5">
+                    Due Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[rgba(4,12,28,0.8)] border border-[#4fc3f7]/30 focus:border-[#4fc3f7] focus:outline-none focus:shadow-[0_0_12px_#4fc3f730] text-[#e0f7fa] text-sm transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 px-5 py-4 border-t border-[#4fc3f7]/20 bg-[rgba(4,12,28,0.7)]">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-3 py-2.5 bg-[rgba(79,195,247,0.05)] border border-[#4fc3f7]/40 hover:bg-[#4fc3f7]/10 hover:border-[#4fc3f7]/60 text-[10px] font-semibold tracking-[1.5px] uppercase text-[#4fc3f7] transition-all"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleCreateTask}
+                  disabled={!newTaskTitle.trim() || !newTaskProjectId}
+                  className="flex-1 px-3 py-2.5 bg-gradient-to-r from-[#4fc3f7]/20 to-[#4fc3f7]/10 border border-[#4fc3f7] hover:from-[#4fc3f7]/30 hover:to-[#4fc3f7]/20 hover:shadow-[0_0_12px_#4fc3f78a] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none text-[10px] font-semibold tracking-[1.5px] uppercase text-[#4fc3f7] transition-all"
+                >
+                  REGISTER QUEST
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <style>{`
         @keyframes fade-in-up {

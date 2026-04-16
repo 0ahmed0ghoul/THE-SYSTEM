@@ -14,7 +14,7 @@ import {
 } from "../validators/project.validators.js";
 
 export async function createProjectHandler(req: Request, res: Response) {
-  const userId = req.userId!;
+  const userId :number = req.userId!;
   const payload = createProjectSchema.parse(req.body);
 
   const project = await createProject({
@@ -33,8 +33,8 @@ export async function getProjectsHandler(req: Request, res: Response) {
 }
 
 export async function getProjectByIdHandler(req: Request, res: Response) {
-  const userId = req.userId!;
-  const { id } = projectIdParamSchema.parse(req.params);
+  const userId :number = req.userId!;
+  const { id  } = projectIdParamSchema.parse(req.params);
 
   const project = await getProjectByIdAndUserId(id, userId);
 
@@ -46,7 +46,7 @@ export async function getProjectByIdHandler(req: Request, res: Response) {
 }
 
 export async function deleteProjectHandler(req: Request, res: Response) {
-  const userId = req.userId!;
+  const userId :number = req.userId!;
   const { id } = projectIdParamSchema.parse(req.params);
 
   const deleted = await deleteProjectByIdAndUserId(id, userId);

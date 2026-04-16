@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore } from "../../store/projectStore";
 import { useTaskStore } from "../../store/taskStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Edit2,
@@ -27,8 +27,8 @@ export default function ProjectDetailPage() {
   const navigate = useNavigate();
   const projectId = parseInt(id!);
   
-  const { getProjectById, updateProject } = useProjectStore();
-  const { getProjectTasks } = useTaskStore();
+  const { getProjectById, loadProjects, removeProject, updateProject } = useProjectStore();
+  const { getProjectTasks, loadTasks } = useTaskStore();
   
   const project = getProjectById(projectId);
   const tasks = getProjectTasks(projectId);
@@ -36,6 +36,13 @@ export default function ProjectDetailPage() {
   const [editedProject, setEditedProject] = useState(project);
   const [activeTab, setActiveTab] = useState<"overview" | "board" | "activities">("overview");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  useEffect(() => {
+    void loadProjects();
+    if (Number.isFinite(projectId)) {
+      void loadTasks(projectId);
+    }
+  }, [loadProjects, loadTasks, projectId]);
 
   if (!project) {
     return (
@@ -94,7 +101,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleDeleteProject = () => {
-    deleteProject(projectId);
+    void removeProject(projectId);
     navigate("/projects");
   };
 
@@ -597,8 +604,4 @@ export default function ProjectDetailPage() {
       )}
     </div>
   );
-}
-
-function deleteProject(projectId: number) {
-  throw new Error("Function not implemented.");
 }

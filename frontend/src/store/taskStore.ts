@@ -1,10 +1,15 @@
-// frontend/src/features/store/taskStore.ts
 import { create } from "zustand";
+import {
+  createTask as createTaskRequest,
+  deleteTask as deleteTaskRequest,
+  getTaskById,
+  getTasks,
+  updateTask as updateTaskRequest,
+  type ApiTask,
+  type ApiTaskStatus,
+} from "../features/tasks/services/tasks.api";
 
-// ✅ Task Status Type - Export this for use across the app
 export type TaskStatus = "todo" | "inprogress" | "done";
-
-// ✅ Task Priority Type
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
 export interface SubTask {
@@ -33,8 +38,8 @@ export interface Task {
   id: number;
   title: string;
   description?: string;
-  status: TaskStatus;  // ✅ Use TaskStatus type
-  priority: TaskPriority;  // ✅ Use TaskPriority type
+  status: TaskStatus;
+  priority: TaskPriority;
   projectId: number;
   projectName?: string;
   assignee?: {
@@ -51,7 +56,6 @@ export interface Task {
   updatedAt: string;
 }
 
-// ✅ Helper function to get status display text
 export const getStatusDisplay = (status: TaskStatus): string => {
   const statusMap: Record<TaskStatus, string> = {
     todo: "To Do",
@@ -61,7 +65,6 @@ export const getStatusDisplay = (status: TaskStatus): string => {
   return statusMap[status];
 };
 
-// ✅ Helper function to get status icon
 export const getStatusIcon = (status: TaskStatus): string => {
   const iconMap: Record<TaskStatus, string> = {
     todo: "📋",
@@ -71,7 +74,6 @@ export const getStatusIcon = (status: TaskStatus): string => {
   return iconMap[status];
 };
 
-// ✅ Helper function to get status color classes
 export const getStatusColor = (status: TaskStatus): string => {
   const colorMap: Record<TaskStatus, string> = {
     todo: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
@@ -81,7 +83,6 @@ export const getStatusColor = (status: TaskStatus): string => {
   return colorMap[status];
 };
 
-// ✅ Helper function to get priority display text
 export const getPriorityDisplay = (priority: TaskPriority): string => {
   const priorityMap: Record<TaskPriority, string> = {
     low: "Low",
@@ -92,7 +93,6 @@ export const getPriorityDisplay = (priority: TaskPriority): string => {
   return priorityMap[priority];
 };
 
-// ✅ Helper function to get priority color classes
 export const getPriorityColor = (priority: TaskPriority): string => {
   const colorMap: Record<TaskPriority, string> = {
     low: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
@@ -103,7 +103,6 @@ export const getPriorityColor = (priority: TaskPriority): string => {
   return colorMap[priority];
 };
 
-// ✅ Helper function to get priority icon
 export const getPriorityIcon = (priority: TaskPriority): string => {
   const iconMap: Record<TaskPriority, string> = {
     low: "🔵",
@@ -114,7 +113,6 @@ export const getPriorityIcon = (priority: TaskPriority): string => {
   return iconMap[priority];
 };
 
-// ✅ Column configuration for Kanban board
 export const COLUMNS: { id: TaskStatus; title: string; icon: string }[] = [
   { id: "todo", title: "To Do", icon: "📋" },
   { id: "inprogress", title: "In Progress", icon: "🔄" },
@@ -123,14 +121,15 @@ export const COLUMNS: { id: TaskStatus; title: string; icon: string }[] = [
 
 interface TaskStore {
   tasks: Task[];
-  addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => void;
-  updateTask: (id: number, updates: Partial<Task>) => void;
-  deleteTask: (id: number) => void;
+  isLoaded: boolean;
+  loadTasks: (projectId?: number) => Promise<void>;
+  addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateTask: (id: number, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: number) => Promise<void>;
   getTaskById: (id: number) => Task | undefined;
   getProjectTasks: (projectId: number) => Task[];
   addComment: (taskId: number, comment: Comment) => void;
   toggleSubtask: (taskId: number, subtaskId: number) => void;
-  // ✅ Additional useful methods
   getTasksByStatus: (status: TaskStatus) => Task[];
   getTasksByPriority: (priority: TaskPriority) => Task[];
   getTaskStats: () => {
@@ -141,160 +140,192 @@ interface TaskStore {
     highPriority: number;
     urgent: number;
   };
+  clearTasks: () => void;
+}
+
+function toUiStatus(status: ApiTaskStatus): TaskStatus {
+  if (status === "in-progress") {
+    return "inprogress";
+  }
+  return status;
+}
+
+function toApiStatus(status: TaskStatus): ApiTaskStatus {
+  if (status === "inprogress") {
+    return "in-progress";
+  }
+  return status;
+}
+
+function toUiTask(task: ApiTask): Task {
+  return {
+    id: Number(task.id),
+    title: task.title,
+    status: toUiStatus(task.status),
+    priority: "medium",
+    projectId: Number(task.project_id),
+    dueDate: task.due_date ?? undefined,
+    assignee: task.assigned_to
+      ? {
+          id: Number(task.assigned_to),
+          name: `User ${task.assigned_to}`,
+          email: "",
+        }
+      : undefined,
+    tags: [],
+    subtasks: [],
+    attachments: [],
+    comments: [],
+    createdAt: task.created_at,
+    updatedAt: task.created_at,
+  };
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
-  tasks: [
-    // Sample tasks
-    {
-      id: 1,
-      title: "Complete API documentation",
-      description: "Write comprehensive API documentation for the new endpoints",
-      status: "inprogress",
-      priority: "high",
-      projectId: 3,
-      projectName: "API Integration",
-      assignee: {
-        id: 1,
-        name: "John Doe",
-        email: "john@example.com",
-      },
-      dueDate: "2026-04-15",
-      tags: ["api", "documentation"],
-      subtasks: [
-        { id: 1, title: "Review existing docs", completed: true },
-        { id: 2, title: "Write endpoint descriptions", completed: false },
-        { id: 3, title: "Add code examples", completed: false },
-      ],
-      attachments: [
-        { id: 1, name: "api-spec.pdf", size: "2.3 MB", url: "#" },
-      ],
-      comments: [
-        {
-          id: 1,
-          taskId: 1,
-          userId: 2,
-          userName: "Jane Smith",
-          content: "Don't forget to include authentication details",
-          createdAt: new Date().toISOString(),
-          userAvatar: "https://i.pravatar.cc/150?img=2",
-          
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      title: "Design system components",
-      description: "Create reusable React components for buttons, modals, and forms",
-      status: "todo",
-      priority: "medium",
-      projectId: 10,
-      projectName: "Design System",
-      assignee: {
-        id: 3,
-        name: "Mike Johnson",
-        email: "mike@example.com",
-      },
-      dueDate: "2026-04-20",
-      tags: ["design", "ui", "components"],
-      subtasks: [
-        { id: 4, title: "Design button variants", completed: false },
-        { id: 5, title: "Create modal component", completed: false },
-      ],
-      attachments: [],
-      comments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 3,
-      title: "User testing session",
-      description: "Conduct user testing for the mobile app redesign",
-      status: "done",
-      priority: "high",
-      projectId: 2,
-      projectName: "Mobile App Redesign",
-      assignee: {
-        id: 4,
-        name: "Sarah Williams",
-        email: "sarah@example.com",
-      },
-      dueDate: "2026-04-10",
-      tags: ["testing", "ux"],
-      subtasks: [
-        { id: 6, title: "Recruit participants", completed: true },
-        { id: 7, title: "Create test scenarios", completed: true },
-        { id: 8, title: "Run testing sessions", completed: true },
-      ],
-      attachments: [],
-      comments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ],
-  
-  addTask: (task) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    set((state) => ({ tasks: [...state.tasks, newTask] }));
+  tasks: [],
+  isLoaded: false,
+
+  loadTasks: async (projectId?: number) => {
+    const tasks = await getTasks(projectId);
+    set({ tasks: tasks.map(toUiTask), isLoaded: true });
   },
-  
-  updateTask: (id, updates) => {
+
+  addTask: async (task) => {
+    const created = await createTaskRequest({
+      title: task.title,
+      projectId: task.projectId,
+      assignedTo: task.assignee?.id,
+      dueDate: task.dueDate,
+    });
+
+    const createdTask: Task = {
+      ...toUiTask(created),
+      ...task,
+      title: created.title,
+      projectId: Number(created.project_id),
+      status: toUiStatus(created.status),
+      createdAt: created.created_at,
+      updatedAt: created.created_at,
+    };
+
+    set((state) => ({ tasks: [...state.tasks, createdTask] }));
+  },
+
+  updateTask: async (id, updates) => {
+    const previous = get().tasks;
+
     set((state) => ({
       tasks: state.tasks.map((task) =>
-        task.id === id ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task
+        task.id === id ? { ...task, ...updates, updatedAt: new Date().toISOString() } : task,
       ),
     }));
+
+    try {
+      const payload: {
+        title?: string;
+        status?: ApiTaskStatus;
+        assignedTo?: number | null;
+        dueDate?: string | null;
+        position?: number;
+      } = {};
+
+      if (updates.title !== undefined) {
+        payload.title = updates.title;
+      }
+      if (updates.status !== undefined) {
+        payload.status = toApiStatus(updates.status);
+      }
+      if (updates.assignee !== undefined) {
+        payload.assignedTo = updates.assignee?.id ?? null;
+      }
+      if (updates.dueDate !== undefined) {
+        payload.dueDate = updates.dueDate ?? null;
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const updated = await updateTaskRequest(id, payload);
+        set((state) => ({
+          tasks: state.tasks.map((task) =>
+            task.id === id
+              ? {
+                  ...task,
+                  title: updated.title,
+                  status: toUiStatus(updated.status),
+                  projectId: Number(updated.project_id),
+                  dueDate: updated.due_date ?? undefined,
+                  updatedAt: new Date().toISOString(),
+                }
+              : task,
+          ),
+        }));
+      }
+    } catch (error) {
+      set({ tasks: previous });
+      throw error;
+    }
   },
-  
-  deleteTask: (id) => {
+
+  deleteTask: async (id) => {
+    await deleteTaskRequest(id);
     set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) }));
   },
-  
+
   getTaskById: (id) => {
-    return get().tasks.find((task) => task.id === id);
+    const localTask = get().tasks.find((task) => task.id === id);
+    if (localTask) {
+      return localTask;
+    }
+
+    getTaskById(id)
+      .then((task) => {
+        set((state) => {
+          const exists = state.tasks.some((existingTask) => existingTask.id === task.id);
+          if (exists) {
+            return state;
+          }
+
+          return { tasks: [...state.tasks, toUiTask(task)] };
+        });
+      })
+      .catch(() => {
+        // Ignore background lookup failures; route-level UI handles missing task.
+      });
+
+    return undefined;
   },
-  
+
   getProjectTasks: (projectId) => {
     return get().tasks.filter((task) => task.projectId === projectId);
   },
-  
+
   getTasksByStatus: (status) => {
     return get().tasks.filter((task) => task.status === status);
   },
-  
+
   getTasksByPriority: (priority) => {
     return get().tasks.filter((task) => task.priority === priority);
   },
-  
+
   getTaskStats: () => {
     const tasks = get().tasks;
     return {
       total: tasks.length,
-      todo: tasks.filter(t => t.status === "todo").length,
-      inprogress: tasks.filter(t => t.status === "inprogress").length,
-      done: tasks.filter(t => t.status === "done").length,
-      highPriority: tasks.filter(t => t.priority === "high").length,
-      urgent: tasks.filter(t => t.priority === "urgent").length,
+      todo: tasks.filter((t) => t.status === "todo").length,
+      inprogress: tasks.filter((t) => t.status === "inprogress").length,
+      done: tasks.filter((t) => t.status === "done").length,
+      highPriority: tasks.filter((t) => t.priority === "high").length,
+      urgent: tasks.filter((t) => t.priority === "urgent").length,
     };
   },
-  
+
   addComment: (taskId, comment) => {
     set((state) => ({
       tasks: state.tasks.map((task) =>
-        task.id === taskId
-          ? { ...task, comments: [...(task.comments || []), comment] }
-          : task
+        task.id === taskId ? { ...task, comments: [...(task.comments || []), comment] } : task,
       ),
     }));
   },
-  
+
   toggleSubtask: (taskId, subtaskId) => {
     set((state) => ({
       tasks: state.tasks.map((task) =>
@@ -304,11 +335,15 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
               subtasks: task.subtasks.map((subtask) =>
                 subtask.id === subtaskId
                   ? { ...subtask, completed: !subtask.completed }
-                  : subtask
+                  : subtask,
               ),
             }
-          : task
+          : task,
       ),
     }));
+  },
+
+  clearTasks: () => {
+    set({ tasks: [], isLoaded: false });
   },
 }));

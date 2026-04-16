@@ -20,11 +20,10 @@ import {
   Target,
   Briefcase,
 } from "lucide-react";
-import { projectsData } from "../../pages/data";
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
-  const { projects, addProject, removeProject, updateProject, getProjectStats } = useProjectStore();
+  const { projects, loadProjects, addProject, removeProject, updateProject, getProjectStats } = useProjectStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "planning" | "active" | "onHold" | "completed" | "archived">("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | "low" | "medium" | "high" | "urgent">("all");
@@ -34,14 +33,10 @@ export default function ProjectsPage() {
   const [newProjectDescription, setNewProjectDescription] = useState("");
   const [menuOpen, setMenuOpen] = useState<number | null>(null);
 
-  // Initialize with sample data if no projects exist
+  // Load projects from API-backed store.
   useEffect(() => {
-    if (projects.length === 0) {
-      projectsData.forEach(project => {
-        addProject(project);
-      });
-    }
-  }, []);
+    void loadProjects();
+  }, [loadProjects]);
 
   const stats = getProjectStats();
 
@@ -359,6 +354,17 @@ export default function ProjectsPage() {
                               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />
                               <div className="absolute right-0 mt-2 w-44 bg-[rgba(4,12,28,0.98)] border border-[rgba(79,195,247,0.2)] backdrop-blur-sm z-20">
                                 <div className="py-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/projects/${project.id}/board`);
+                                      setMenuOpen(null);
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-xs tracking-[1px] hover:bg-[#4fc3f7]/10 text-[#4fc3f7] font-semibold flex items-center gap-2"
+                                  >
+                                    📊 View Board
+                                  </button>
+                                  <div className="border-t border-[rgba(79,195,247,0.1)] my-1" />
                                   <button
                                     onClick={() => handleStatusChange(project.id, "active")}
                                     className="w-full text-left px-4 py-2 text-xs tracking-[1px] hover:bg-[rgba(79,195,247,0.1)] text-[rgba(79,195,247,0.7)]"

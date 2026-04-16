@@ -1,5 +1,5 @@
 // frontend/src/features/calendar/CalendarPage.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, type DragEvent } from "react";
 import {
   Calendar,
   Plus,
@@ -21,6 +21,7 @@ import {
   Repeat,
   Link2,
 } from "lucide-react";
+import { useTaskStore } from "../store/taskStore";
 
 interface CalendarEvent {
   id: number;
@@ -54,6 +55,7 @@ function getPriorityStyle(priority: string) {
 }
 
 export default function CalendarPage() {
+  const { tasks, loadTasks, updateTask } = useTaskStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([
     { id: 1, title: "Abyssal Gate Recon", date: "2026-03-30", time: "09:00", type: "mission", priority: "high", location: "Sector 7", attendees: ["Alex", "Sarah"] },
@@ -80,6 +82,23 @@ export default function CalendarPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterType, setFilterType] = useState("all");
+  const [dragTaskId, setDragTaskId] = useState<number | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    void loadTasks();
+  }, [loadTasks]);
+
+  const toDateKey = (value: Date | string) => {
+    if (typeof value === "string") {
+      return value.slice(0, 10);
+    }
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   // Get days in month
   const getDaysInMonth = (date: Date) => {
@@ -108,8 +127,39 @@ export default function CalendarPage() {
   };
 
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toDateKey(date);
     return events.filter(event => event.date === dateStr);
+  };
+
+  const getTasksForDate = (date: Date) => {
+    const dateStr = toDateKey(date);
+    return tasks.filter((task) => task.dueDate && toDateKey(task.dueDate) === dateStr);
+  };
+
+  const unscheduledTasks = tasks.filter((task) => !task.dueDate);
+
+  const startTaskDrag = (taskId: number, event: DragEvent<HTMLElement>) => {
+    event.dataTransfer.setData("text/task-id", String(taskId));
+    event.dataTransfer.effectAllowed = "move";
+    setDragTaskId(taskId);
+  };
+
+  const scheduleTaskOnDate = async (date: string, event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rawTaskId = event.dataTransfer.getData("text/task-id");
+    const taskId = Number(rawTaskId || dragTaskId);
+
+    if (!taskId || Number.isNaN(taskId)) {
+      setDropTargetDate(null);
+      setDragTaskId(null);
+      return;
+    }
+
+    await updateTask(taskId, { dueDate: date });
+    setDropTargetDate(null);
+    setDragTaskId(null);
   };
 
   const handleAddEvent = () => {
@@ -160,7 +210,7 @@ export default function CalendarPage() {
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 8);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = toDateKey(new Date());
 
   return (
     <div className="sys-calendar-page min-h-screen bg-[#020c1a] font-['Rajdhani',sans-serif] text-[#e0f7fa] relative">
@@ -249,8 +299,11 @@ export default function CalendarPage() {
               <div className="grid grid-cols-7 auto-rows-fr">
                 {days.map((day, idx) => {
                   const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                  const isToday = day.toISOString().split('T')[0] === todayStr;
+                  const dayKey = toDateKey(day);
+                  const isToday = dayKey === todayStr;
+                  const isDropTarget = dayKey === dropTargetDate;
                   const dayEvents = getEventsForDate(day);
+                  const dayTasks = getTasksForDate(day);
                   const dayStr = day.getDate();
                   
                   return (
@@ -258,9 +311,22 @@ export default function CalendarPage() {
                       key={idx}
                       className={`min-h-[100px] p-1.5 border-r border-b border-[rgba(79,195,247,0.05)] transition-all duration-200 hover:bg-[rgba(79,195,247,0.03)] ${
                         !isCurrentMonth ? "opacity-40" : ""
-                      } ${isToday ? "bg-[rgba(79,195,247,0.05)]" : ""}`}
+                      } ${isToday ? "bg-[rgba(79,195,247,0.05)]" : ""} ${isDropTarget ? "ring-1 ring-[#4fc3f7] bg-[rgba(79,195,247,0.1)]" : ""}`}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        setDropTargetDate(dayKey);
+                      }}
+                      onDragLeave={() => {
+                        if (dropTargetDate === dayKey) {
+                          setDropTargetDate(null);
+                        }
+                      }}
+                      onDrop={(event) => {
+                        void scheduleTaskOnDate(dayKey, event);
+                      }}
                       onClick={() => {
-                        setNewEvent({ ...newEvent, date: day.toISOString().split('T')[0] });
+                        setNewEvent({ ...newEvent, date: dayKey });
                         setShowAddModal(true);
                       }}
                     >
@@ -270,6 +336,22 @@ export default function CalendarPage() {
                         {dayStr}
                       </div>
                       <div className="space-y-1">
+                        {dayTasks.slice(0, 1).map(task => (
+                          <div
+                            key={`task-${task.id}`}
+                            draggable
+                            onDragStart={(event) => startTaskDrag(task.id, event)}
+                            onDragEnd={() => {
+                              setDragTaskId(null);
+                              setDropTargetDate(null);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[9px] tracking-[1px] px-1.5 py-0.5 truncate border cursor-grab active:cursor-grabbing transition-all hover:scale-105 border-[#4fc3f7]/50 bg-[#4fc3f7]/10 text-[#9fe8ff]"
+                            title="Drag to another day"
+                          >
+                            ◈ {task.title}
+                          </div>
+                        ))}
                         {dayEvents.slice(0, 2).map(event => (
                           <div
                             key={event.id}
@@ -283,9 +365,9 @@ export default function CalendarPage() {
                             {event.title}
                           </div>
                         ))}
-                        {dayEvents.length > 2 && (
+                        {(dayEvents.length > 2 || dayTasks.length > 1) && (
                           <div className="text-[8px] text-[rgba(79,195,247,0.4)] pl-1.5">
-                            +{dayEvents.length - 2} more
+                            +{Math.max(dayEvents.length - 2, 0) + Math.max(dayTasks.length - 1, 0)} more
                           </div>
                         )}
                       </div>
@@ -426,6 +508,40 @@ export default function CalendarPage() {
                     <div className="text-3xl opacity-20 mb-2">📅</div>
                     <p className="text-[10px] tracking-[2px] text-[rgba(79,195,247,0.3)]">No upcoming operations</p>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Task Drag Pool */}
+            <div className="bg-[rgba(4,18,38,0.95)] border border-[rgba(79,195,247,0.2)] overflow-hidden animate-[fade-in-up_0.4s_0.34s_ease_both]">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[rgba(79,195,247,0.1)]">
+                <div className="w-1 h-4 bg-[#4fc3f7] shadow-[0_0_6px_#4fc3f7]" />
+                <span className="font-['Cinzel',serif] text-xs font-bold tracking-[2px] text-[#e0f7fa]">TASK SCHEDULER</span>
+                <span className="text-[9px] tracking-[2px] bg-[rgba(79,195,247,0.07)] border border-[rgba(79,195,247,0.2)] px-1.5 py-0.5 text-[rgba(79,195,247,0.55)] ml-auto">
+                  {unscheduledTasks.length}
+                </span>
+              </div>
+              <div className="p-3 space-y-2 max-h-40 overflow-y-auto">
+                {unscheduledTasks.length > 0 ? (
+                  unscheduledTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={(event) => startTaskDrag(task.id, event)}
+                      onDragEnd={() => {
+                        setDragTaskId(null);
+                        setDropTargetDate(null);
+                      }}
+                      className="text-[10px] px-2 py-1.5 border border-[#4fc3f7]/40 bg-[#4fc3f7]/8 text-[#b8efff] cursor-grab active:cursor-grabbing hover:bg-[#4fc3f7]/14 transition-all"
+                      title="Drag onto a day in the calendar"
+                    >
+                      {task.title}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[10px] tracking-[1.5px] text-[rgba(79,195,247,0.35)] text-center py-2">
+                    All tasks already scheduled
+                  </p>
                 )}
               </div>
             </div>

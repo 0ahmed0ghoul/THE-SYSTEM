@@ -1,4 +1,8 @@
 import { create } from "zustand";
+import { useProjectStore } from "./projectStore";
+import { useTaskStore } from "./taskStore";
+
+const AUTH_TOKEN_KEY = "auth_token";
 
 export interface User {
   name: string;
@@ -24,6 +28,11 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
-  logout: () => set({ user: null }),
+  logout: () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    useProjectStore.getState().clearProjects();
+    useTaskStore.getState().clearTasks();
+    set({ user: null });
+  },
 }));
 

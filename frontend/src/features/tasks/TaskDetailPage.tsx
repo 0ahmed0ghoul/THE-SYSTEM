@@ -56,8 +56,8 @@ export default function TaskDetailPage() {
   const navigate = useNavigate();
   const taskId = parseInt(id!);
   
-  const { getTaskById, updateTask, deleteTask, addComment, toggleSubtask } = useTaskStore();
-  const { projects } = useProjectStore();
+  const { getTaskById, loadTasks, updateTask, deleteTask, addComment, toggleSubtask } = useTaskStore();
+  const { projects, loadProjects } = useProjectStore();
   
   const task = getTaskById(taskId);
   const [isEditing, setIsEditing] = useState(false);
@@ -72,6 +72,11 @@ export default function TaskDetailPage() {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    void loadProjects();
+    void loadTasks();
+  }, [loadProjects, loadTasks]);
 
   useEffect(() => {
     if (task) {
