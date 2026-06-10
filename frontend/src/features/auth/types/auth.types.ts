@@ -11,12 +11,21 @@ export interface RegisterPayload {
 
 export interface User {
   id: number;
-  email: string;
   name: string;
-  password: string; // only for mock testing, remove when backend is ready
-  created_at?: string;
-  updated_at?: string;
-  is_profile_complete?: boolean | 0 | 1;
+  email: string;
+
+  is_profile_complete: boolean;
+
+  phone?: string;
+  location?: string;
+  position?: string;
+  department?: string;
+  rank?: string;
+  bio?: string;
+  website?: string;
+  github?: string;
+  linkedin?: string;
+  avatar?: string;
 }
 
 export interface LoginPayload {
