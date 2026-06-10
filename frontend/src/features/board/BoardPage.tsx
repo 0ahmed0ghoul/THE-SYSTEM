@@ -11,7 +11,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { useState, useMemo, useCallback } from "react";
-import { Plus, Filter, X, Calendar, AlertTriangle, Users, Clock } from "lucide-react";
+import { Plus, Filter, X, AlertTriangle, Clock } from "lucide-react";
 
 import Column from "./components/Column";
 import TaskCard from "./components/TaskCard";
@@ -34,23 +34,23 @@ const COLUMNS: ColumnType[] = [
 ];
 
 // Priority rank helper
-function getTaskRank(priority: string): "S" | "A" | "B" | "C" | "D" {
-  return (
-    ({ urgent: "S", high: "A", medium: "B", low: "C" } as Record<string, any>)[
-      priority
-    ] ?? "D"
-  );
-}
+// function getTaskRank(priority: string): "S" | "A" | "B" | "C" | "D" {
+//   return (
+//     ({ urgent: "S", high: "A", medium: "B", low: "C" } as Record<string, any>)[
+//       priority
+//     ] ?? "D"
+//   );
+// }
 
-function getRankStyle(rank: string) {
-  return {
-    S: "text-red-400 border-red-500/40 bg-red-500/5",
-    A: "text-amber-400 border-amber-500/40 bg-amber-500/5",
-    B: "text-sky-300 border-sky-400/40 bg-sky-400/5",
-    C: "text-emerald-400 border-emerald-500/40 bg-emerald-500/5",
-    D: "text-sky-500/50 border-sky-500/20 bg-transparent",
-  }[rank] ?? "text-sky-500/50 border-sky-500/20";
-}
+// function getRankStyle(rank: string) {
+//   return {
+//     S: "text-red-400 border-red-500/40 bg-red-500/5",
+//     A: "text-amber-400 border-amber-500/40 bg-amber-500/5",
+//     B: "text-sky-300 border-sky-400/40 bg-sky-400/5",
+//     C: "text-emerald-400 border-emerald-500/40 bg-emerald-500/5",
+//     D: "text-sky-500/50 border-sky-500/20 bg-transparent",
+//   }[rank] ?? "text-sky-500/50 border-sky-500/20";
+// }
 
 export default function BoardPage({ projectId }: { projectId?: number }) {
   const { tasks, updateTask, addTask } = useTaskStore();

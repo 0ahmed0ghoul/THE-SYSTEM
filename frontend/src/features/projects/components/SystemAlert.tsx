@@ -1,5 +1,5 @@
 // frontend/src/components/SystemAlert.tsx
-import { Zap, AlertTriangle, X } from "lucide-react";
+import { Zap, X } from "lucide-react";
 
 export function SystemAlert({ onDismiss }: { onDismiss: () => void }) {
   return (

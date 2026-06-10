@@ -1,7 +1,7 @@
 // Sidebar.tsx (updated to fetch real data)
 import { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { LogOut, Star, ChevronDown, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
+import { LogOut,ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import { useAuthStore } from "../../features/auth/store/authStore";
 import { useProjectStore } from "../../store/projectStore";
 import { useTaskStore } from "../../store/taskStore";
@@ -51,7 +51,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   
   // Get stores
   const { projects, fetchProjects, isLoading: projectsLoading } = useProjectStore();
-  const { tasks, fetchTasks, getRecentTasks, getHighPriorityTasks } = useTaskStore();
+  const {fetchTasks, getHighPriorityTasks } = useTaskStore();
   
   // Fetch data on mount
   useEffect(() => {

@@ -12,13 +12,8 @@ import {
   Flag,
   User,
   MoreHorizontal,
-  X,
   ChevronDown,
-  ArrowUpRight,
-  Target,
-  Zap,
 } from "lucide-react";
-import { tasksData } from "../../pages/data";
 import { useProjectStore } from "../../store/projectStore";
 import { useTaskStore } from "../../store/taskStore";
 

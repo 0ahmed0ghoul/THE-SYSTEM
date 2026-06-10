@@ -1,6 +1,6 @@
 // frontend/src/features/analytics/Analytics.tsx
 import { useState, useEffect } from "react";
-import { BarChart3, TrendingUp, Users, CheckCircle2, Activity, Calendar, Target, Award, Zap, TrendingDown, Clock, ArrowUpRight, Download, Filter } from "lucide-react";
+import { BarChart3, TrendingUp, Users, CheckCircle2,TrendingDown, ArrowUpRight, Download } from "lucide-react";
 
 // ── Animated counter ─────────────────────────────────────────────────────────
 function useCountUp(target: number | string, duration = 900) {

@@ -2,9 +2,9 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { 
-  ArrowLeft, Calendar, Users, Flag, Clock, DollarSign, 
+  ArrowLeft, Calendar, Users, Clock, DollarSign, 
   Tag, Target, Eye, CheckCircle2, Edit, MoreHorizontal,
-  Briefcase, User, Mail, Phone, MapPin, Link2
+  Briefcase, User,
 } from "lucide-react";
 import {type Project } from "../../../store/projectStore";
 import { projectsData } from "../../../pages/data";

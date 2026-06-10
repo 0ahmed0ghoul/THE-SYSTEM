@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useRegister } from "../hooks/useRegister";
 import {useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function RegisterPage() {
   const {

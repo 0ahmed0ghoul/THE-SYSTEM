@@ -2,7 +2,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo } from "react";
-import { Calendar, AlertTriangle, GripVertical, Clock, CheckCircle2 } from "lucide-react";
+import { Calendar, AlertTriangle, GripVertical, Clock } from "lucide-react";
 import type { Task } from "../../../store/taskStore";
 
 // Priority to Rank mapping

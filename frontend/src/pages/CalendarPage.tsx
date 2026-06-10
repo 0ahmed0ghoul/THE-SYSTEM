@@ -1,5 +1,5 @@
 // frontend/src/features/calendar/CalendarPage.tsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Calendar,
   Plus,
@@ -7,19 +7,11 @@ import {
   ChevronRight,
   Clock,
   MapPin,
-  Users,
-  AlertCircle,
   CheckCircle2,
   X,
   Trash2,
-  Edit2,
   Search,
-  Filter,
-  Download,
   RefreshCw,
-  Bell,
-  Repeat,
-  Link2,
 } from "lucide-react";
 
 interface CalendarEvent {

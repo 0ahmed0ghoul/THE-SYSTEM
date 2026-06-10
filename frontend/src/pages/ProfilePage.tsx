@@ -6,12 +6,11 @@ import {
   Phone,
   MapPin,
   Calendar,
-  Briefcase,
   Edit2,
   Save,
   X,
   Camera,
-  Lock,
+
   Bell,
   Moon,
   Globe,
@@ -19,10 +18,7 @@ import {
   LogOut,
   CheckCircle,
   AlertCircle,
-  ArrowUpRight,
-  Users,
-  Target,
-  Award,
+
   Globe2,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
