@@ -20,7 +20,9 @@ export const useLogin = () => {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authorized, setAuthorized] = useState(false);
-
+  const needsProfileCompletion = user
+  ? !user.is_profile_complete
+  : undefined;
   // 🔥 CLEANUP TIMER
   useEffect(() => {
     return () => {
@@ -81,6 +83,7 @@ export const useLogin = () => {
     handleChange,
     handleSubmit,
     setShowPassword,
+    needsProfileCompletion,
     handleGoogleLogin,
   };
 };

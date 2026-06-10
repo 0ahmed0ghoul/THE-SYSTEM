@@ -1,7 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useRegister } from "../hooks/useRegister";
 import {useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function RegisterPage() {
   const {
@@ -19,6 +19,7 @@ export default function RegisterPage() {
     handleGoogleLogin,
     needsProfileCompletion,
   } = useRegister();
+
   const navigate = useNavigate();
   useEffect(() => {
     if (needsProfileCompletion === undefined) return;
@@ -30,6 +31,7 @@ export default function RegisterPage() {
     }
   }, [needsProfileCompletion, navigate]);
 
+  
   return (
     <>
       <div className="system-root">

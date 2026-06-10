@@ -12,7 +12,9 @@ const validatePassword = (password: string) => ({
 export const useRegister = () => {
   const register = useAuthStore((s) => s.register);
   const isLoading = useAuthStore((s) => s.isLoading);
-
+  const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+const [awakened, setAwakened] = useState(false);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -21,7 +23,16 @@ export const useRegister = () => {
     password: "",
     confirmPassword: "",
   });
+  const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_URL}/auth/google`;
 
+  const handleGoogleLogin = () => {
+    window.location.href = GOOGLE_AUTH_URL;
+  };
+  const user = useAuthStore((s) => s.user);
+
+const needsProfileCompletion = user
+  ? !user.is_profile_complete
+  : undefined;
   const [error, setError] = useState("");
 
   const passwordValidations = useMemo(
@@ -80,5 +91,12 @@ export const useRegister = () => {
     allValid,
     handleChange,
     handleSubmit,
+    showPassword,
+    showConfirmPassword,
+    setShowPassword,
+    setShowConfirmPassword,
+    awakened,
+    handleGoogleLogin,
+    needsProfileCompletion,
   };
 };

@@ -16,7 +16,7 @@ export interface User {
   password: string; // only for mock testing, remove when backend is ready
   created_at?: string;
   updated_at?: string;
-  is_profile_complete?: number; // 👈 ADD THIS
+  is_profile_complete?: boolean | 0 | 1;
 }
 
 export interface LoginPayload {

@@ -4,11 +4,13 @@ import { authService } from "../api/auth.service";
 import type { User } from "../types/auth.types";
 
 const computeProfileState = (user: User | null) =>
-  !!user && !user.is_profile_complete;
+  !!user && (user.is_profile_complete === false || user.is_profile_complete === 0);
 
 const normalize = (user: User): User => ({
   ...user,
-  is_profile_complete: !!user.is_profile_complete,
+  is_profile_complete:
+    user.is_profile_complete === true ||
+    user.is_profile_complete === 1,
 });
 
 interface AuthState {
@@ -149,8 +151,7 @@ export const useAuthStore = create<AuthState>()(
           user: parsed,
           isAuthenticated: true,
           initializing: false,
-          needsProfileCompletion: parsed.is_profile_complete === 0,
-        });
+          needsProfileCompletion: parsed.is_profile_complete === false || parsed.is_profile_complete === 0,        });
       
         return true;
       },
